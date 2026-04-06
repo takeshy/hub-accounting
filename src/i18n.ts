@@ -78,7 +78,13 @@ const translations: Record<string, Record<string, string>> = {
     "txn.empty": "No transactions",
     "txn.showAllAccounts": "Show all accounts",
     "settings.title": "Settings",
+    "settings.directory": "Directory",
+    "settings.fiscalYearStart": "Fiscal Year Start Month",
     "reset": "Reset",
+    "fiscal.year": "FY{0}",
+    "fiscal.carryForward": "Year-End Close",
+    "fiscal.carryForwardConfirm": "Close current year and create FY{0}?",
+    "fiscal.switchYear": "Switch Year",
 
     // Tax categories
     "tax.category": "Tax Category",
@@ -165,6 +171,7 @@ const translations: Record<string, Record<string, string>> = {
     "account.Equity:OpeningCapital": "Opening Capital",
     "account.Equity:OwnerDraw": "Owner Draw",
     "account.Equity:OwnerContribution": "Owner Contribution",
+    "account.Equity:RetainedEarnings": "Retained Earnings",
 
     // Placeholder
     "accounts.nameExample": "Bank:Checking",
@@ -255,7 +262,13 @@ const translations: Record<string, Record<string, string>> = {
     "txn.empty": "取引がありません",
     "txn.showAllAccounts": "全勘定科目を表示",
     "settings.title": "設定",
+    "settings.directory": "保存ディレクトリ",
+    "settings.fiscalYearStart": "年度開始月",
     "reset": "リセット",
+    "fiscal.year": "{0}年度",
+    "fiscal.carryForward": "年度繰越",
+    "fiscal.carryForwardConfirm": "現在の年度を閉じて{0}年度を作成しますか？",
+    "fiscal.switchYear": "年度切替",
 
     // Tax categories
     "tax.category": "税区分",
@@ -352,6 +365,7 @@ const translations: Record<string, Record<string, string>> = {
     "account.Equity:OpeningCapital": "元入金",
     "account.Equity:OwnerDraw": "事業主貸",
     "account.Equity:OwnerContribution": "事業主借",
+    "account.Equity:RetainedEarnings": "繰越利益",
 
     // Placeholder
     "accounts.nameExample": "普通預金",

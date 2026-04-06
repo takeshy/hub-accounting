@@ -29,10 +29,11 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
   React.useEffect(() => {
     (async () => {
-      const saved = (await props.api.storage.get("accountingSettings")) as AccountingSettings | null;
+      const saved = (await props.api.storage.get("accountingSettings")) as Partial<AccountingSettings> | null;
       if (saved) {
-        setLocalSettings(saved);
-        setState({ settings: saved });
+        const merged = { ...DEFAULT_SETTINGS, ...saved };
+        setLocalSettings(merged);
+        setState({ settings: merged });
       }
     })();
   }, []);
@@ -87,6 +88,28 @@ export function SettingsPanel(props: SettingsPanelProps) {
           <option value={0}>0</option>
           <option value={2}>2</option>
           <option value={3}>3</option>
+        </select>
+        <label>{t("settings.directory")}</label>
+        <input
+          type="text"
+          value={settings.directory}
+          onChange={(e) => {
+            setLocalSettings((prev) => ({ ...prev, directory: e.target.value }));
+          }}
+          placeholder="accounting"
+        />
+
+        <label>{t("settings.fiscalYearStart")}</label>
+        <select
+          value={settings.fiscalYearStartMonth}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            setLocalSettings((prev) => ({ ...prev, fiscalYearStartMonth: v }));
+          }}
+        >
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
         </select>
       </div>
 

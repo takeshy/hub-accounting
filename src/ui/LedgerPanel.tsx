@@ -3,7 +3,7 @@
  */
 
 import * as React from "react";
-import { t, tAccount, setLanguage } from "../i18n";
+import { t, tFormat, tAccount, setLanguage } from "../i18n";
 import { setState, useStore, registerSaveFn } from "../store";
 import {
   Transaction,
@@ -27,6 +27,7 @@ import {
   refreshErrors,
 } from "../core/ledger";
 import { exportFreeeCSV } from "../core/csv";
+import { getFiscalYear, getFiscalYearFileName, getFiscalYearRange, carryForward } from "../core/fiscal";
 import { CsvImportDialog } from "./CsvImportDialog";
 
 interface PluginAPI {
@@ -72,6 +73,12 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [showAllAccounts, setShowAllAccounts] = React.useState(false);
   const [showImport, setShowImport] = React.useState(false);
 
+  // Fiscal year state
+  const [currentFiscalYear, setCurrentFiscalYear] = React.useState<number>(
+    getFiscalYear(new Date().toISOString().slice(0, 10), settings.fiscalYearStartMonth)
+  );
+  const [availableYears, setAvailableYears] = React.useState<{ year: number; fileId: string }[]>([]);
+
   // Editing transaction ID (set from MainView's edit button)
   const [editingId, setEditingId] = React.useState<string | null>(null);
 
@@ -116,10 +123,11 @@ export function LedgerPanel(props: LedgerPanelProps) {
   // Load settings once
   React.useEffect(() => {
     (async () => {
-      const saved = (await api.storage.get("accountingSettings")) as AccountingSettings | null;
+      const saved = (await api.storage.get("accountingSettings")) as Partial<AccountingSettings> | null;
       if (saved) {
-        setSettings(saved);
-        setState({ settings: saved });
+        const merged = { ...DEFAULT_SETTINGS, ...saved };
+        setSettings(merged);
+        setState({ settings: merged });
       }
     })();
   }, []);
@@ -136,21 +144,36 @@ export function LedgerPanel(props: LedgerPanelProps) {
     }
   }, [props.fileContent, props.fileName]);
 
-  // Fallback: find existing .beancount file in drive on mount
+  // Scan all drive files for .beancount files in our directory
   React.useEffect(() => {
     if (props.fileContent) return;
     (async () => {
       try {
-        const files = await api.drive.listFiles();
-        const found = files.find((f) => f.name.endsWith(".beancount") || f.name.endsWith(".bean"));
-        if (found) {
-          fileIdRef.current = found.id;
-          const content = await api.drive.readFile(found.id);
-          const ledger = refreshErrors(parse(content));
-          setState({ ledger, fileName: found.name });
+        const dir = settings.directory;
+        const prefix = dir ? `${dir}/` : "";
+        const allFiles = await api.drive.listFiles();
+        const years: { year: number; fileId: string }[] = [];
+        for (const f of allFiles) {
+          // Match "accounting/2026.beancount" or "2026.beancount"
+          const name = f.name;
+          const match = name.match(new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d{4})\\.beancount$`));
+          if (match) {
+            years.push({ year: Number(match[1]), fileId: f.id });
+          }
         }
+        if (years.length === 0) return;
+        years.sort((a, b) => b.year - a.year);
+        setAvailableYears(years);
+
+        const thisYear = getFiscalYear(new Date().toISOString().slice(0, 10), settings.fiscalYearStartMonth);
+        const target = years.find((y) => y.year === thisYear) || years[0];
+        fileIdRef.current = target.fileId;
+        setCurrentFiscalYear(target.year);
+        const content = await api.drive.readFile(target.fileId);
+        const ledger = refreshErrors(parse(content));
+        setState({ ledger, fileName: `${target.year}.beancount` });
       } catch {
-        // no existing file
+        // no files found
       }
     })();
   }, []);
@@ -161,9 +184,13 @@ export function LedgerPanel(props: LedgerPanelProps) {
     const template = settings.defaultCurrency === "JPY" ? "japan_sole_proprietor" : "default";
     const newLedger = createEmptyLedger(settings.defaultCurrency, template);
     const text = format(newLedger, settings.decimalPlaces);
-    const file = await api.drive.createFile("ledger.beancount", text);
+    const year = getFiscalYear(new Date().toISOString().slice(0, 10), settings.fiscalYearStartMonth);
+    const fileName = getFiscalYearFileName(year, settings.directory);
+    const file = await api.drive.createFile(fileName, text);
     fileIdRef.current = file.id;
-    setState({ ledger: newLedger, fileName: file.name });
+    setCurrentFiscalYear(year);
+    setAvailableYears((prev) => [...prev, { year, fileId: file.id }].sort((a, b) => b.year - a.year));
+    setState({ ledger: newLedger, fileName: `${year}.beancount` });
   }
 
   async function saveLedger(l: LedgerData) {
@@ -363,10 +390,44 @@ export function LedgerPanel(props: LedgerPanelProps) {
 
   async function handleExportFreeeCSV() {
     if (!ledger) return;
-    const csv = exportFreeeCSV(ledger, "", "9999-12-31", settings.defaultCurrency, t);
-    await api.drive.createFile("freee_journal.csv", csv);
+    const { start, end } = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
+    const csv = exportFreeeCSV(ledger, start, end, settings.defaultCurrency, t);
+    await api.drive.createFile(`freee_${currentFiscalYear}.csv`, csv);
   }
 
+  async function handleSwitchYear(year: number) {
+    const entry = availableYears.find((y) => y.year === year);
+    if (!entry) return;
+    try {
+      // Save current year before switching
+      if (ledger) await saveLedger(ledger);
+      const content = await api.drive.readFile(entry.fileId);
+      const newLedger = refreshErrors(parse(content));
+      fileIdRef.current = entry.fileId;
+      setCurrentFiscalYear(year);
+      setState({ ledger: newLedger, fileName: `${year}.beancount` });
+    } catch {
+      // read error
+    }
+  }
+
+  async function handleCarryForward() {
+    if (!ledger) return;
+    const nextYear = currentFiscalYear + 1;
+    if (!confirm(tFormat("fiscal.carryForwardConfirm", nextYear))) return;
+
+    const newLedger = carryForward(ledger, nextYear, settings.fiscalYearStartMonth, settings.defaultCurrency);
+    const text = format(newLedger, settings.decimalPlaces);
+    const fileName = getFiscalYearFileName(nextYear, settings.directory);
+    const file = await api.drive.createFile(fileName, text);
+
+    fileIdRef.current = file.id;
+    setCurrentFiscalYear(nextYear);
+    setAvailableYears((prev) =>
+      [...prev, { year: nextYear, fileId: file.id }].sort((a, b) => b.year - a.year)
+    );
+    setState({ ledger: newLedger, fileName: `${nextYear}.beancount` });
+  }
 
   // --- Render ---
 
@@ -482,6 +543,25 @@ export function LedgerPanel(props: LedgerPanelProps) {
   return (
     <div className="accounting-panel">
       <h3>{t("plugin.name")}</h3>
+
+      <div className="accounting-actions" style={{ alignItems: "center" }}>
+        {availableYears.length > 1 ? (
+          <select
+            value={currentFiscalYear}
+            onChange={(e) => handleSwitchYear(Number(e.target.value))}
+            style={{ fontSize: 14, fontWeight: 600, padding: "4px 8px" }}
+          >
+            {availableYears.map((y) => (
+              <option key={y.year} value={y.year}>{tFormat("fiscal.year", y.year)}</option>
+            ))}
+          </select>
+        ) : (
+          <span style={{ fontSize: 14, fontWeight: 600 }}>{tFormat("fiscal.year", currentFiscalYear)}</span>
+        )}
+        <button className="accounting-btn accounting-btn-sm" onClick={handleCarryForward} title={t("fiscal.carryForward")}>
+          {t("fiscal.carryForward")}
+        </button>
+      </div>
 
       <div className="accounting-actions">
         <button className="accounting-btn accounting-btn-primary" onClick={() => setView("addTransaction")}>

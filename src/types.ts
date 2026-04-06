@@ -156,6 +156,10 @@ export interface AccountingSettings {
   dateFormat: "yyyy-MM-dd" | "dd/MM/yyyy" | "MM/dd/yyyy";
   /** Decimal places */
   decimalPlaces: number;
+  /** Directory for ledger files */
+  directory: string;
+  /** Fiscal year start month (1-12) */
+  fiscalYearStartMonth: number;
 }
 
 /** Default settings */
@@ -163,4 +167,6 @@ export const DEFAULT_SETTINGS: AccountingSettings = {
   defaultCurrency: "JPY",
   dateFormat: "yyyy-MM-dd",
   decimalPlaces: 0,
+  directory: "accounting",
+  fiscalYearStartMonth: 1,
 };
