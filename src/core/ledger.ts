@@ -12,6 +12,7 @@ import {
   AccountType,
   ACCOUNT_TYPES,
   Directive,
+  LedgerTemplate,
 } from "../types";
 
 /** Generate a unique id */
@@ -291,10 +292,58 @@ export function addAccount(
   });
 }
 
+/** Japan sole proprietor account definitions (青色申告決算書準拠) */
+function japanSoleProprietorAccounts(today: string, cur: string): Account[] {
+  const a = (name: string, type: AccountType): Account => ({
+    name, type, openDate: today, currencies: [cur],
+  });
+  return [
+    // 資産
+    a("Assets:Cash", "Assets"),
+    a("Assets:OrdinaryDeposit", "Assets"),
+    a("Assets:AccountsReceivable", "Assets"),
+    // 負債
+    a("Liabilities:AccountsPayable", "Liabilities"),
+    a("Liabilities:AccruedLiabilities", "Liabilities"),
+    a("Liabilities:WithholdingTax", "Liabilities"),
+    a("Liabilities:Borrowings", "Liabilities"),
+    // 収益
+    a("Income:Sales", "Income"),
+    a("Income:OtherIncome", "Income"),
+    // 費用
+    a("Expenses:Purchases", "Expenses"),
+    a("Expenses:Salary", "Expenses"),
+    a("Expenses:Outsourcing", "Expenses"),
+    a("Expenses:Rent", "Expenses"),
+    a("Expenses:Utilities", "Expenses"),
+    a("Expenses:Travel", "Expenses"),
+    a("Expenses:Communication", "Expenses"),
+    a("Expenses:Advertising", "Expenses"),
+    a("Expenses:Entertainment", "Expenses"),
+    a("Expenses:Insurance", "Expenses"),
+    a("Expenses:Repairs", "Expenses"),
+    a("Expenses:Supplies", "Expenses"),
+    a("Expenses:Depreciation", "Expenses"),
+    a("Expenses:Welfare", "Expenses"),
+    a("Expenses:PackagingShipping", "Expenses"),
+    a("Expenses:TaxesDues", "Expenses"),
+    a("Expenses:Fees", "Expenses"),
+    a("Expenses:Interest", "Expenses"),
+    a("Expenses:Miscellaneous", "Expenses"),
+    // 純資産
+    a("Equity:OpeningCapital", "Equity"),
+    a("Equity:OwnerDraw", "Equity"),
+    a("Equity:OwnerContribution", "Equity"),
+  ];
+}
+
 /** Create an empty ledger */
-export function createEmptyLedger(defaultCurrency: string): LedgerData {
+export function createEmptyLedger(defaultCurrency: string, template: LedgerTemplate = "default"): LedgerData {
   const today = new Date().toISOString().slice(0, 10);
-  const defaultAccounts: Account[] = [
+
+  const defaultAccounts: Account[] = template === "japan_sole_proprietor"
+    ? japanSoleProprietorAccounts(today, defaultCurrency)
+    : [
     { name: "Assets:Bank", type: "Assets", openDate: today, currencies: [defaultCurrency] },
     { name: "Assets:Cash", type: "Assets", openDate: today, currencies: [defaultCurrency] },
     { name: "Liabilities:CreditCard", type: "Liabilities", openDate: today, currencies: [defaultCurrency] },

@@ -17,6 +17,7 @@ import {
 } from "../core/reports";
 import { format } from "../core/formatter";
 import { parse } from "../core/parser";
+import { generateConsumptionTaxReport, ConsumptionTaxReport } from "../core/tax";
 
 interface PluginAPI {
   storage: {
@@ -77,6 +78,7 @@ export function MainView(props: MainViewProps) {
     { key: "balance_sheet", label: t("report.balanceSheet") },
     { key: "income_statement", label: t("report.incomeStatement") },
     { key: "trial_balance", label: t("report.trialBalance") },
+    { key: "consumption_tax", label: t("report.consumptionTax") },
   ];
 
   return (
@@ -138,6 +140,17 @@ export function MainView(props: MainViewProps) {
         {activeReport === "trial_balance" && (
           <TrialBalanceView
             report={generateTrialBalance(ledger, filterDateTo || today, currency)}
+            decimals={settings.decimalPlaces}
+          />
+        )}
+        {activeReport === "consumption_tax" && (
+          <ConsumptionTaxView
+            report={generateConsumptionTaxReport(
+              ledger,
+              filterDateFrom || "1970-01-01",
+              filterDateTo || today,
+              currency
+            )}
             decimals={settings.decimalPlaces}
           />
         )}
@@ -219,6 +232,9 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
                 <span className={`accounting-posting-amount ${(p.amount || 0) < 0 ? "accounting-negative" : ""}`}>
                   {p.amount !== null ? formatNum(p.amount, settings.decimalPlaces) : ""}{" "}
                   {p.currency}
+                  {p.taxCategory && (
+                    <span className="accounting-tax-badge">{t(`tax.${p.taxCategory}`)}</span>
+                  )}
                 </span>
               </div>
             ))}
@@ -372,6 +388,69 @@ function AccountBalanceList({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Consumption tax report view */
+function ConsumptionTaxView({ report, decimals }: { report: ConsumptionTaxReport; decimals: number }) {
+  function TaxSection({ title, data }: { title: string; data: ConsumptionTaxReport["sales"] }) {
+    return (
+      <div className="accounting-report-section">
+        <h4>{title}</h4>
+        <table className="accounting-table">
+          <thead>
+            <tr>
+              <th>{t("tax.category")}</th>
+              <th style={{ textAlign: "right" }}>{t("amount")}</th>
+              <th style={{ textAlign: "right" }}>{t("tax.taxAmount")}</th>
+              <th style={{ textAlign: "right" }}>{t("tax.netAmount")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{t("tax.rate10")}</td>
+              <td style={{ textAlign: "right" }}>{formatNum(data.taxable10.totalAmount, decimals)}</td>
+              <td style={{ textAlign: "right" }}>{formatNum(data.taxable10.taxAmount, decimals)}</td>
+              <td style={{ textAlign: "right" }}>{formatNum(data.taxable10.netAmount, decimals)}</td>
+            </tr>
+            <tr>
+              <td>{t("tax.rate8")}</td>
+              <td style={{ textAlign: "right" }}>{formatNum(data.taxable8.totalAmount, decimals)}</td>
+              <td style={{ textAlign: "right" }}>{formatNum(data.taxable8.taxAmount, decimals)}</td>
+              <td style={{ textAlign: "right" }}>{formatNum(data.taxable8.netAmount, decimals)}</td>
+            </tr>
+            <tr>
+              <td>{t("tax.exempt")}</td>
+              <td style={{ textAlign: "right" }}>{formatNum(data.exempt.totalAmount, decimals)}</td>
+              <td style={{ textAlign: "right" }}>-</td>
+              <td style={{ textAlign: "right" }}>{formatNum(data.exempt.netAmount, decimals)}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr className="accounting-table-total">
+              <td><strong>{t("tax.totalTax")}</strong></td>
+              <td></td>
+              <td style={{ textAlign: "right" }}><strong>{formatNum(data.totalTax, decimals)}</strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    );
+  }
+
+  return (
+    <div className="accounting-report">
+      <h3>{t("report.consumptionTax")} ({report.dateFrom} ~ {report.dateTo})</h3>
+      <TaxSection title={t("tax.sales")} data={report.sales} />
+      <TaxSection title={t("tax.purchases")} data={report.purchases} />
+      <div className="accounting-report-grand-total">
+        <strong>{t("tax.netPayable")}</strong>
+        <strong className={report.netTaxPayable < 0 ? "accounting-negative" : ""}>
+          {formatNum(report.netTaxPayable, decimals)} {report.currency}
+        </strong>
+      </div>
     </div>
   );
 }

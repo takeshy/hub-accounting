@@ -73,6 +73,70 @@ const translations: Record<string, Record<string, string>> = {
     "settings.title": "Settings",
     "reset": "Reset",
 
+    // Tax categories
+    "tax.category": "Tax Category",
+    "tax.taxable_10": "Taxable (10%)",
+    "tax.taxable_8": "Taxable (8%)",
+    "tax.exempt": "Exempt",
+    "tax.non_taxable": "Non-taxable",
+    "tax.tax_free": "Tax-free",
+    "tax.none": "None",
+
+    // Consumption tax report
+    "report.consumptionTax": "Consumption Tax",
+    "tax.sales": "Sales",
+    "tax.purchases": "Purchases",
+    "tax.taxAmount": "Tax Amount",
+    "tax.netAmount": "Net Amount",
+    "tax.totalTax": "Total Tax",
+    "tax.netPayable": "Net Tax Payable",
+    "tax.rate10": "Standard Rate (10%)",
+    "tax.rate8": "Reduced Rate (8%)",
+
+    // Ledger template
+    "template.default": "Default",
+    "template.japan_sole_proprietor": "Japan - Sole Proprietor",
+    "template.select": "Account Template",
+
+    // freee
+    "export.freeeCSV": "Export freee CSV",
+
+    // Japanese account display names
+    "account.Assets:Cash": "Cash",
+    "account.Assets:OrdinaryDeposit": "Ordinary Deposit",
+    "account.Assets:AccountsReceivable": "Accounts Receivable",
+    "account.Liabilities:AccountsPayable": "Accounts Payable",
+    "account.Liabilities:AccruedLiabilities": "Accrued Liabilities",
+    "account.Liabilities:WithholdingTax": "Withholding Tax",
+    "account.Liabilities:Borrowings": "Borrowings",
+    "account.Income:Sales": "Sales",
+    "account.Income:OtherIncome": "Other Income",
+    "account.Expenses:Purchases": "Purchases / COGS",
+    "account.Expenses:Salary": "Salary / Wages",
+    "account.Expenses:Outsourcing": "Outsourcing",
+    "account.Expenses:Rent": "Rent",
+    "account.Expenses:Utilities": "Utilities",
+    "account.Expenses:Travel": "Travel / Transportation",
+    "account.Expenses:Communication": "Communication",
+    "account.Expenses:Advertising": "Advertising",
+    "account.Expenses:Entertainment": "Entertainment",
+    "account.Expenses:Insurance": "Insurance",
+    "account.Expenses:Repairs": "Repairs",
+    "account.Expenses:Supplies": "Supplies / Consumables",
+    "account.Expenses:Depreciation": "Depreciation",
+    "account.Expenses:Welfare": "Welfare / Benefits",
+    "account.Expenses:PackagingShipping": "Packaging & Shipping",
+    "account.Expenses:TaxesDues": "Taxes & Dues",
+    "account.Expenses:Fees": "Professional Fees",
+    "account.Expenses:Interest": "Interest",
+    "account.Expenses:Miscellaneous": "Miscellaneous",
+    "account.Equity:OpeningCapital": "Opening Capital",
+    "account.Equity:OwnerDraw": "Owner Draw",
+    "account.Equity:OwnerContribution": "Owner Contribution",
+
+    // Placeholder
+    "accounts.nameExample": "Bank:Checking",
+
     // Errors
     "error.unbalanced": "Transaction is not balanced",
     "error.noAccount": "Account does not exist",
@@ -153,6 +217,70 @@ const translations: Record<string, Record<string, string>> = {
     "txn.empty": "取引がありません",
     "settings.title": "設定",
     "reset": "リセット",
+
+    // Tax categories
+    "tax.category": "税区分",
+    "tax.taxable_10": "課税（10%）",
+    "tax.taxable_8": "課税（8%軽減）",
+    "tax.exempt": "非課税",
+    "tax.non_taxable": "不課税",
+    "tax.tax_free": "免税",
+    "tax.none": "なし",
+
+    // Consumption tax report
+    "report.consumptionTax": "消費税集計",
+    "tax.sales": "売上",
+    "tax.purchases": "仕入・経費",
+    "tax.taxAmount": "消費税額",
+    "tax.netAmount": "税抜金額",
+    "tax.totalTax": "消費税合計",
+    "tax.netPayable": "納付消費税額",
+    "tax.rate10": "標準税率（10%）",
+    "tax.rate8": "軽減税率（8%）",
+
+    // Ledger template
+    "template.default": "標準",
+    "template.japan_sole_proprietor": "個人事業主（青色申告）",
+    "template.select": "勘定科目テンプレート",
+
+    // freee
+    "export.freeeCSV": "freee CSV出力",
+
+    // Japanese account display names
+    "account.Assets:Cash": "現金",
+    "account.Assets:OrdinaryDeposit": "普通預金",
+    "account.Assets:AccountsReceivable": "売掛金",
+    "account.Liabilities:AccountsPayable": "買掛金",
+    "account.Liabilities:AccruedLiabilities": "未払金",
+    "account.Liabilities:WithholdingTax": "源泉所得税",
+    "account.Liabilities:Borrowings": "借入金",
+    "account.Income:Sales": "売上高",
+    "account.Income:OtherIncome": "雑収入",
+    "account.Expenses:Purchases": "仕入高",
+    "account.Expenses:Salary": "給料賃金",
+    "account.Expenses:Outsourcing": "外注工賃",
+    "account.Expenses:Rent": "地代家賃",
+    "account.Expenses:Utilities": "水道光熱費",
+    "account.Expenses:Travel": "旅費交通費",
+    "account.Expenses:Communication": "通信費",
+    "account.Expenses:Advertising": "広告宣伝費",
+    "account.Expenses:Entertainment": "接待交際費",
+    "account.Expenses:Insurance": "損害保険料",
+    "account.Expenses:Repairs": "修繕費",
+    "account.Expenses:Supplies": "消耗品費",
+    "account.Expenses:Depreciation": "減価償却費",
+    "account.Expenses:Welfare": "福利厚生費",
+    "account.Expenses:PackagingShipping": "荷造運賃",
+    "account.Expenses:TaxesDues": "租税公課",
+    "account.Expenses:Fees": "支払手数料",
+    "account.Expenses:Interest": "利子割引料",
+    "account.Expenses:Miscellaneous": "雑費",
+    "account.Equity:OpeningCapital": "元入金",
+    "account.Equity:OwnerDraw": "事業主貸",
+    "account.Equity:OwnerContribution": "事業主借",
+
+    // Placeholder
+    "accounts.nameExample": "普通預金",
 
     // Errors
     "error.unbalanced": "取引の貸借が一致しません",

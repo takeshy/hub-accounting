@@ -1,6 +1,17 @@
 /** Account types following Beancount convention */
 export type AccountType = "Assets" | "Liabilities" | "Income" | "Expenses" | "Equity";
 
+/** Tax categories for Japanese consumption tax */
+export type TaxCategory = "taxable_10" | "taxable_8" | "exempt" | "non_taxable" | "tax_free";
+
+/** Valid tax category values */
+export const TAX_CATEGORIES: TaxCategory[] = [
+  "taxable_10", "taxable_8", "exempt", "non_taxable", "tax_free",
+];
+
+/** Ledger template for account presets */
+export type LedgerTemplate = "default" | "japan_sole_proprietor";
+
 /** All valid account type prefixes */
 export const ACCOUNT_TYPES: AccountType[] = [
   "Assets",
@@ -43,6 +54,8 @@ export interface Posting {
   currency: string;
   /** Posting-level metadata */
   metadata?: MetadataEntry[];
+  /** Tax category for Japanese consumption tax */
+  taxCategory?: TaxCategory;
 }
 
 /** Transaction flag */
@@ -133,7 +146,7 @@ export interface AccountBalance {
 }
 
 /** Report types */
-export type ReportType = "journal" | "balance_sheet" | "income_statement" | "trial_balance";
+export type ReportType = "journal" | "balance_sheet" | "income_statement" | "trial_balance" | "consumption_tax";
 
 /** Plugin settings */
 export interface AccountingSettings {

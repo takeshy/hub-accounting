@@ -455,3 +455,13 @@
   border-bottom: none;
   padding-top: 8px;
 }
+
+/* Tax badge */
+.accounting-tax-badge {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: #1e3a5f;
+  color: #93c5fd;
+  margin-left: 4px;
+}

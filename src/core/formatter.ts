@@ -65,6 +65,9 @@ function formatTransaction(txn: Transaction, decimalPlaces: number): string {
   for (let i = 0; i < txn.postings.length; i++) {
     const p = txn.postings[i];
     parts.push(formatPosting(p, decimalPlaces));
+    if (p.taxCategory) {
+      parts.push(`    tax-category: ${p.taxCategory}`);
+    }
     if (p.metadata) {
       for (const [key, value] of p.metadata) {
         parts.push(`    ${key}: ${value}`);

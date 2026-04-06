@@ -223,6 +223,35 @@ describe("createEmptyLedger", () => {
     expect(ledger.transactions).toHaveLength(0);
     expect(ledger.errors).toHaveLength(0);
   });
+
+  it("creates default template accounts with no second arg", () => {
+    const ledger = createEmptyLedger("JPY");
+    const names = ledger.accounts.map((a) => a.name);
+    expect(names).toContain("Assets:Bank");
+    expect(names).toContain("Expenses:Food");
+  });
+
+  it("creates japan_sole_proprietor template with Japanese standard accounts", () => {
+    const ledger = createEmptyLedger("JPY", "japan_sole_proprietor");
+    const names = ledger.accounts.map((a) => a.name);
+    // Should have Japanese business accounts
+    expect(names).toContain("Income:Sales");
+    expect(names).toContain("Expenses:Purchases");
+    expect(names).toContain("Expenses:TaxesDues");
+    expect(names).toContain("Expenses:Entertainment");
+    expect(names).toContain("Equity:OwnerDraw");
+    expect(names).toContain("Equity:OwnerContribution");
+    // Should NOT have default template accounts
+    expect(names).not.toContain("Assets:Bank");
+    expect(names).not.toContain("Expenses:Food");
+  });
+
+  it("japan_sole_proprietor has all 青色申告 expense categories", () => {
+    const ledger = createEmptyLedger("JPY", "japan_sole_proprietor");
+    const expenses = ledger.accounts.filter((a) => a.type === "Expenses");
+    // 19 expense categories from 青色申告決算書
+    expect(expenses.length).toBe(19);
+  });
 });
 
 describe("refreshErrors", () => {

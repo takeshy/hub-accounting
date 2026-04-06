@@ -15,6 +15,8 @@ import {
   TransactionMetadataEntry,
   ACCOUNT_TYPES,
   AccountType,
+  TaxCategory,
+  TAX_CATEGORIES,
 } from "../types";
 
 /** Generate a simple unique id */
@@ -215,6 +217,21 @@ export function parse(text: string): LedgerData {
             errors.push({ line: i + 1, message: `Invalid posting: ${pt}`, severity: "error" });
           }
           i++;
+        }
+
+        // Extract tax-category metadata into typed field
+        for (const p of postings) {
+          if (p.metadata) {
+            const taxIdx = p.metadata.findIndex(([k]) => k === "tax-category");
+            if (taxIdx !== -1) {
+              const value = p.metadata[taxIdx][1];
+              if (TAX_CATEGORIES.includes(value as TaxCategory)) {
+                p.taxCategory = value as TaxCategory;
+              }
+              p.metadata.splice(taxIdx, 1);
+              if (p.metadata.length === 0) p.metadata = undefined;
+            }
+          }
         }
 
         const txn: Transaction = {

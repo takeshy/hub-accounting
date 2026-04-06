@@ -192,4 +192,42 @@ describe("parser", () => {
     const result = parse(text);
     expect(result.transactions[0].postings[0].amount).toBe(1000000);
   });
+
+  it("parses tax-category metadata into taxCategory field", () => {
+    const text = [
+      '2024-01-15 * "Lunch"',
+      "  Expenses:Food  1080 JPY",
+      "    tax-category: taxable_8",
+      "  Assets:Cash  -1080 JPY",
+    ].join("\n");
+    const result = parse(text);
+    expect(result.transactions[0].postings[0].taxCategory).toBe("taxable_8");
+    // tax-category should be removed from metadata
+    expect(result.transactions[0].postings[0].metadata).toBeUndefined();
+  });
+
+  it("preserves other metadata alongside tax-category", () => {
+    const text = [
+      '2024-01-15 * "Lunch"',
+      "  Expenses:Food  1080 JPY",
+      "    tax-category: taxable_10",
+      "    note: receipt",
+      "  Assets:Cash  -1080 JPY",
+    ].join("\n");
+    const result = parse(text);
+    const p = result.transactions[0].postings[0];
+    expect(p.taxCategory).toBe("taxable_10");
+    expect(p.metadata).toEqual([["note", "receipt"]]);
+  });
+
+  it("ignores invalid tax-category value", () => {
+    const text = [
+      '2024-01-15 * "Test"',
+      "  Expenses:Food  100 JPY",
+      "    tax-category: invalid_value",
+      "  Assets:Cash  -100 JPY",
+    ].join("\n");
+    const result = parse(text);
+    expect(result.transactions[0].postings[0].taxCategory).toBeUndefined();
+  });
 });

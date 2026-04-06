@@ -14,6 +14,8 @@ import {
   LedgerData,
   AccountingSettings,
   DEFAULT_SETTINGS,
+  TaxCategory,
+  TAX_CATEGORIES,
 } from "../types";
 import { parse } from "../core/parser";
 import { format } from "../core/formatter";
@@ -24,6 +26,7 @@ import {
   isBalanced,
   refreshErrors,
 } from "../core/ledger";
+import { exportFreeeCSV } from "../core/csv";
 
 interface PluginAPI {
   storage: {
@@ -111,7 +114,8 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const ledger = store.ledger;
 
   function handleNewLedger() {
-    const newLedger = createEmptyLedger(settings.defaultCurrency);
+    const template = settings.defaultCurrency === "JPY" ? "japan_sole_proprietor" : "default";
+    const newLedger = createEmptyLedger(settings.defaultCurrency, template);
     setState({ ledger: newLedger, fileName: "ledger.beancount" });
     saveLedger(newLedger);
   }
@@ -134,6 +138,8 @@ export function LedgerPanel(props: LedgerPanelProps) {
     const newPostings = [...postings];
     if (field === "amount") {
       newPostings[idx] = { ...newPostings[idx], amount: value === "" ? null : Number(value) };
+    } else if (field === "taxCategory") {
+      newPostings[idx] = { ...newPostings[idx], taxCategory: value ? (value as TaxCategory) : undefined };
     } else {
       newPostings[idx] = { ...newPostings[idx], [field]: value };
     }
@@ -146,6 +152,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
     const filledPostings = postings.map((p) => ({
       ...p,
       currency: p.currency || settings.defaultCurrency,
+      ...(p.taxCategory ? { taxCategory: p.taxCategory } : {}),
     }));
 
     const txn: Omit<Transaction, "id"> = {
@@ -199,6 +206,12 @@ export function LedgerPanel(props: LedgerPanelProps) {
     if (!ledger) return;
     const text = format(ledger, settings.decimalPlaces);
     await api.drive.createFile("ledger.beancount", text);
+  }
+
+  async function handleExportFreeeCSV() {
+    if (!ledger) return;
+    const csv = exportFreeeCSV(ledger, "", "9999-12-31", settings.defaultCurrency, t);
+    await api.drive.createFile("freee_journal.csv", csv);
   }
 
   async function handleSave() {
@@ -280,6 +293,18 @@ export function LedgerPanel(props: LedgerPanelProps) {
                 onChange={(e) => handlePostingChange(i, "currency", e.target.value)}
                 style={{ width: 50 }}
               />
+              <select
+                value={p.taxCategory || ""}
+                onChange={(e) => handlePostingChange(i, "taxCategory", e.target.value)}
+                style={{ width: 80 }}
+              >
+                <option value="">{t("tax.none")}</option>
+                <option value="taxable_10">{t("tax.taxable_10")}</option>
+                <option value="taxable_8">{t("tax.taxable_8")}</option>
+                <option value="exempt">{t("tax.exempt")}</option>
+                <option value="non_taxable">{t("tax.non_taxable")}</option>
+                <option value="tax_free">{t("tax.tax_free")}</option>
+              </select>
               {postings.length > 2 && (
                 <button
                   className="accounting-btn accounting-btn-sm"
@@ -324,7 +349,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
             type="text"
             value={accName}
             onChange={(e) => setAccName(e.target.value)}
-            placeholder="Bank:Checking"
+            placeholder={t("accounts.nameExample")}
           />
 
           <label>{t("date")}</label>
@@ -396,6 +421,9 @@ export function LedgerPanel(props: LedgerPanelProps) {
         </button>
         <button className="accounting-btn" onClick={handleExport}>
           {t("file.export")}
+        </button>
+        <button className="accounting-btn" onClick={handleExportFreeeCSV}>
+          {t("export.freeeCSV")}
         </button>
       </div>
     </div>

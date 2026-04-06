@@ -149,4 +149,25 @@ describe("formatter", () => {
     const text = "2024-01-01 commodity JPY";
     expect(format(parse(text), 0)).toBe(text + "\n");
   });
+
+  it("round-trips tax-category metadata", () => {
+    const text = [
+      '2024-01-15 * "Lunch"',
+      "  Expenses:Food  800 JPY",
+      "    tax-category: taxable_8",
+      "  Assets:Cash  -800 JPY",
+    ].join("\n");
+    expect(format(parse(text), 0)).toBe(text + "\n");
+  });
+
+  it("round-trips tax-category with other metadata", () => {
+    const text = [
+      '2024-01-15 * "Lunch"',
+      "  Expenses:Food  800 JPY",
+      "    tax-category: taxable_10",
+      "    note: receipt",
+      "  Assets:Cash  -800 JPY",
+    ].join("\n");
+    expect(format(parse(text), 0)).toBe(text + "\n");
+  });
 });
