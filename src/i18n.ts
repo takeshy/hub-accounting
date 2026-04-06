@@ -108,6 +108,31 @@ const translations: Record<string, Record<string, string>> = {
     // freee
     "export.freeeCSV": "Export freee CSV",
 
+    // CSV Import
+    "import.csv": "Import Bank CSV",
+    "import.selectFile": "Select CSV File",
+    "import.bankAccount": "Bank Account",
+    "import.format": "Format",
+    "import.preview": "Preview",
+    "import.confirm": "Import",
+    "import.rowCount": "{0} of {1} rows selected",
+    "import.noData": "No data found in file",
+    "import.importSuccess": "Imported {0} transactions",
+    "import.counterpart": "Counterpart",
+    "import.withdrawal": "Withdrawal",
+    "import.deposit": "Deposit",
+    "import.selectAll": "Select All",
+    "import.deselectAll": "Deselect All",
+    "import.next": "Next",
+    "import.back": "Back",
+    "import.preset.generic": "Generic Bank",
+    "import.preset.yucho": "Japan Post Bank",
+    "import.preset.mufg": "MUFG Bank",
+    "import.preset.smbc": "SMBC",
+    "import.preset.mizuho": "Mizuho Bank",
+    "import.preset.rakuten": "Rakuten Bank",
+    "import.preset.creditcard": "Credit Card",
+
     // Japanese account display names
     "account.Assets:Cash": "Cash",
     "account.Assets:OrdinaryDeposit": "Ordinary Deposit",
@@ -260,6 +285,31 @@ const translations: Record<string, Record<string, string>> = {
     // freee
     "export.freeeCSV": "freee CSV出力",
 
+    // CSV Import
+    "import.csv": "銀行CSV取込",
+    "import.selectFile": "CSVファイルを選択",
+    "import.bankAccount": "銀行口座",
+    "import.format": "形式",
+    "import.preview": "プレビュー",
+    "import.confirm": "取込を実行",
+    "import.rowCount": "{1}件中{0}件を取込",
+    "import.noData": "データが見つかりません",
+    "import.importSuccess": "{0}件の取引を取り込みました",
+    "import.counterpart": "相手勘定",
+    "import.withdrawal": "出金",
+    "import.deposit": "入金",
+    "import.selectAll": "すべて選択",
+    "import.deselectAll": "すべて解除",
+    "import.next": "次へ",
+    "import.back": "戻る",
+    "import.preset.generic": "一般的な銀行",
+    "import.preset.yucho": "ゆうちょ銀行",
+    "import.preset.mufg": "三菱UFJ銀行",
+    "import.preset.smbc": "三井住友銀行",
+    "import.preset.mizuho": "みずほ銀行",
+    "import.preset.rakuten": "楽天銀行",
+    "import.preset.creditcard": "クレジットカード明細",
+
     // Default template account names
     "account.Assets:Bank": "銀行預金",
     "account.Liabilities:CreditCard": "クレジットカード",
@@ -323,6 +373,15 @@ export function setLanguage(lang: string): void {
 
 export function t(key: string): string {
   return translations[currentLang]?.[key] ?? translations["en"]?.[key] ?? key;
+}
+
+/** Translate with placeholder substitution: {0}, {1}, ... */
+export function tFormat(key: string, ...args: (string | number)[]): string {
+  let result = t(key);
+  args.forEach((arg, i) => {
+    result = result.replace(`{${i}}`, String(arg));
+  });
+  return result;
 }
 
 /** Translate an account name for display. Falls back to the raw name. */

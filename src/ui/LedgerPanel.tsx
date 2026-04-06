@@ -27,6 +27,7 @@ import {
   refreshErrors,
 } from "../core/ledger";
 import { exportFreeeCSV } from "../core/csv";
+import { CsvImportDialog } from "./CsvImportDialog";
 
 interface PluginAPI {
   storage: {
@@ -69,6 +70,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [debitEntries, setDebitEntries] = React.useState<PostingEntry[]>([emptyEntry()]);
   const [creditEntries, setCreditEntries] = React.useState<PostingEntry[]>([emptyEntry()]);
   const [showAllAccounts, setShowAllAccounts] = React.useState(false);
+  const [showImport, setShowImport] = React.useState(false);
 
   // Editing transaction ID (set from MainView's edit button)
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -524,10 +526,26 @@ export function LedgerPanel(props: LedgerPanelProps) {
       </div>
 
       <div className="accounting-actions" style={{ marginTop: 16 }}>
+        <button className="accounting-btn accounting-btn-primary" onClick={() => setShowImport(true)}>
+          {t("import.csv")}
+        </button>
         <button className="accounting-btn" onClick={handleExportFreeeCSV}>
           {t("export.freeeCSV")}
         </button>
       </div>
+
+      {showImport && (
+        <CsvImportDialog
+          ledger={ledger}
+          settings={settings}
+          onImport={(newLedger) => {
+            setState({ ledger: newLedger });
+            saveLedger(newLedger);
+            setShowImport(false);
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
     </div>
   );
 }
