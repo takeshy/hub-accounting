@@ -98,14 +98,14 @@ export function MainView(props: MainViewProps) {
           type="date"
           value={filterDateFrom}
           onChange={(e) => setState({ filterDateFrom: e.target.value })}
-          placeholder="From"
+          placeholder={t("filter.from")}
         />
         <span>~</span>
         <input
           type="date"
           value={filterDateTo}
           onChange={(e) => setState({ filterDateTo: e.target.value })}
-          placeholder="To"
+          placeholder={t("filter.to")}
         />
         <input
           type="text"
@@ -192,7 +192,7 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
     <div className="accounting-journal">
       {txns.length === 0 && (
         <p style={{ color: "#888", textAlign: "center", padding: 24 }}>
-          No transactions
+          {t("txn.empty")}
         </p>
       )}
       {txns.map((txn) => (
@@ -313,8 +313,8 @@ function TrialBalanceView({ report, decimals }: { report: TrialBalanceReport; de
         <thead>
           <tr>
             <th>{t("account")}</th>
-            <th style={{ textAlign: "right" }}>Debit</th>
-            <th style={{ textAlign: "right" }}>Credit</th>
+            <th style={{ textAlign: "right" }}>{t("table.debit")}</th>
+            <th style={{ textAlign: "right" }}>{t("table.credit")}</th>
           </tr>
         </thead>
         <tbody>

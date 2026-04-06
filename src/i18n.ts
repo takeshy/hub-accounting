@@ -62,6 +62,17 @@ const translations: Record<string, Record<string, string>> = {
     "settings.dateFormat": "Date Format",
     "settings.decimalPlaces": "Decimal Places",
 
+    // Table
+    "table.debit": "Debit",
+    "table.credit": "Credit",
+
+    // Misc
+    "filter.from": "From",
+    "filter.to": "To",
+    "txn.empty": "No transactions",
+    "settings.title": "Settings",
+    "reset": "Reset",
+
     // Errors
     "error.unbalanced": "Transaction is not balanced",
     "error.noAccount": "Account does not exist",
@@ -131,6 +142,17 @@ const translations: Record<string, Record<string, string>> = {
     "settings.defaultCurrency": "デフォルト通貨",
     "settings.dateFormat": "日付形式",
     "settings.decimalPlaces": "小数点桁数",
+
+    // Table
+    "table.debit": "借方",
+    "table.credit": "貸方",
+
+    // Misc
+    "filter.from": "開始",
+    "filter.to": "終了",
+    "txn.empty": "取引がありません",
+    "settings.title": "設定",
+    "reset": "リセット",
 
     // Errors
     "error.unbalanced": "取引の貸借が一致しません",

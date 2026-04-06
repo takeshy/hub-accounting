@@ -48,7 +48,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
   return (
     <div className="accounting-settings">
-      <h3>{t("plugin.name")} - Settings</h3>
+      <h3>{t("plugin.name")} - {t("settings.title")}</h3>
 
       <div className="accounting-form">
         <label>{t("settings.defaultCurrency")}</label>
@@ -95,7 +95,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
           {t("save")}
         </button>
         <button className="accounting-btn" onClick={handleReset}>
-          Reset
+          {t("reset")}
         </button>
       </div>
     </div>
