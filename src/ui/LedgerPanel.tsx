@@ -3,7 +3,7 @@
  */
 
 import * as React from "react";
-import { t, setLanguage } from "../i18n";
+import { t, tAccount, setLanguage } from "../i18n";
 import { setState, useStore } from "../store";
 import {
   Transaction,
@@ -15,7 +15,6 @@ import {
   AccountingSettings,
   DEFAULT_SETTINGS,
   TaxCategory,
-  TAX_CATEGORIES,
 } from "../types";
 import { parse } from "../core/parser";
 import { format } from "../core/formatter";
@@ -60,10 +59,12 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [txnPayee, setTxnPayee] = React.useState("");
   const [txnNarration, setTxnNarration] = React.useState("");
   const [txnFlag, setTxnFlag] = React.useState<"*" | "!">("*");
-  const [postings, setPostings] = React.useState<Posting[]>([
-    { account: "", amount: null, currency: "" },
-    { account: "", amount: null, currency: "" },
-  ]);
+
+  interface PostingEntry { account: string; amount: number | null; taxCategory?: TaxCategory }
+  const emptyEntry = (): PostingEntry => ({ account: "", amount: null });
+  const [debitEntries, setDebitEntries] = React.useState<PostingEntry[]>([emptyEntry()]);
+  const [creditEntries, setCreditEntries] = React.useState<PostingEntry[]>([emptyEntry()]);
+  const [showAllAccounts, setShowAllAccounts] = React.useState(false);
 
   // Account form state
   const [accName, setAccName] = React.useState("");
@@ -125,42 +126,82 @@ export function LedgerPanel(props: LedgerPanelProps) {
     await api.storage.set("ledgerData", text);
   }
 
-  function handleAddPosting() {
-    setPostings([...postings, { account: "", amount: null, currency: settings.defaultCurrency }]);
+  /** Check if an account is Income or Expenses (tax-relevant) */
+  function isTaxRelevantAccount(accountName: string): boolean {
+    if (!ledger) return false;
+    const acc = ledger.accounts.find((a) => a.name === accountName);
+    return acc ? acc.type === "Income" || acc.type === "Expenses" : false;
   }
 
-  function handleRemovePosting(idx: number) {
-    if (postings.length <= 2) return;
-    setPostings(postings.filter((_, i) => i !== idx));
+  function handleEntryChange(
+    side: "debit" | "credit",
+    idx: number,
+    field: string,
+    value: string
+  ) {
+    const setter = side === "debit" ? setDebitEntries : setCreditEntries;
+    const otherSetter = side === "debit" ? setCreditEntries : setDebitEntries;
+    const otherEntries = side === "debit" ? creditEntries : debitEntries;
+    setter((prev) => {
+      const next = [...prev];
+      if (field === "amount") {
+        const amt = value === "" ? null : Number(value);
+        next[idx] = { ...next[idx], amount: amt };
+        // Auto-fill the other side when both sides have exactly 1 entry
+        // and the other side's amount is empty
+        if (next.length === 1 && otherEntries.length === 1 && otherEntries[0].amount === null && amt !== null) {
+          otherSetter([{ ...otherEntries[0], amount: amt }]);
+        }
+      } else if (field === "taxCategory") {
+        next[idx] = { ...next[idx], taxCategory: value ? (value as TaxCategory) : undefined };
+      } else if (field === "account") {
+        // Clear taxCategory when switching to a non-tax-relevant account
+        const newEntry = { ...next[idx], account: value };
+        const acc = ledger?.accounts.find((a) => a.name === value);
+        if (acc && acc.type !== "Income" && acc.type !== "Expenses") {
+          newEntry.taxCategory = undefined;
+        }
+        next[idx] = newEntry;
+      }
+      return next;
+    });
   }
 
-  function handlePostingChange(idx: number, field: keyof Posting, value: string) {
-    const newPostings = [...postings];
-    if (field === "amount") {
-      newPostings[idx] = { ...newPostings[idx], amount: value === "" ? null : Number(value) };
-    } else if (field === "taxCategory") {
-      newPostings[idx] = { ...newPostings[idx], taxCategory: value ? (value as TaxCategory) : undefined };
-    } else {
-      newPostings[idx] = { ...newPostings[idx], [field]: value };
-    }
-    setPostings(newPostings);
+  function handleAddEntry(side: "debit" | "credit") {
+    const setter = side === "debit" ? setDebitEntries : setCreditEntries;
+    setter((prev) => [...prev, emptyEntry()]);
+  }
+
+  function handleRemoveEntry(side: "debit" | "credit", idx: number) {
+    const setter = side === "debit" ? setDebitEntries : setCreditEntries;
+    setter((prev) => prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx));
   }
 
   function handleSubmitTransaction() {
     if (!ledger) return;
 
-    const filledPostings = postings.map((p) => ({
-      ...p,
-      currency: p.currency || settings.defaultCurrency,
-      ...(p.taxCategory ? { taxCategory: p.taxCategory } : {}),
-    }));
+    const cur = settings.defaultCurrency;
+    const postings: Posting[] = [
+      ...debitEntries.filter((e) => e.account).map((e) => ({
+        account: e.account,
+        amount: e.amount,
+        currency: cur,
+        ...(e.taxCategory ? { taxCategory: e.taxCategory } : {}),
+      })),
+      ...creditEntries.filter((e) => e.account).map((e) => ({
+        account: e.account,
+        amount: e.amount !== null ? -Math.abs(e.amount) : null,
+        currency: cur,
+        ...(e.taxCategory ? { taxCategory: e.taxCategory } : {}),
+      })),
+    ];
 
     const txn: Omit<Transaction, "id"> = {
       date: txnDate,
       flag: txnFlag,
       payee: txnPayee || undefined,
       narration: txnNarration,
-      postings: filledPostings,
+      postings,
       tags: [],
       links: [],
     };
@@ -177,11 +218,72 @@ export function LedgerPanel(props: LedgerPanelProps) {
     // Reset form
     setTxnPayee("");
     setTxnNarration("");
-    setPostings([
-      { account: "", amount: null, currency: settings.defaultCurrency },
-      { account: "", amount: null, currency: settings.defaultCurrency },
-    ]);
+    setDebitEntries([emptyEntry()]);
+    setCreditEntries([emptyEntry()]);
     setView("main");
+  }
+
+  /** Filter accounts by side: debit=Expenses+Assets, credit=Assets+Liabilities+Income */
+  function accountsForSide(side: "debit" | "credit") {
+    if (showAllAccounts) return ledger!.accounts;
+    const debitTypes = new Set(["Expenses", "Assets"]);
+    const creditTypes = new Set(["Assets", "Liabilities", "Income", "Equity"]);
+    const allowed = side === "debit" ? debitTypes : creditTypes;
+    return ledger!.accounts.filter((a) => allowed.has(a.type));
+  }
+
+  function renderPostingGroup(side: "debit" | "credit", label: string, entries: PostingEntry[]) {
+    const accounts = accountsForSide(side);
+    return (
+      <div>
+        <h4>{label}</h4>
+        {entries.map((e, i) => (
+          <div key={i} className="accounting-posting-row">
+            <select
+              value={e.account}
+              onChange={(ev) => handleEntryChange(side, i, "account", ev.target.value)}
+            >
+              <option value="">{t("account")}</option>
+              {accounts.map((a) => (
+                <option key={a.name} value={a.name}>{tAccount(a.name)}</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={e.amount === null ? "" : e.amount}
+              onChange={(ev) => handleEntryChange(side, i, "amount", ev.target.value)}
+              placeholder={t("amount")}
+              style={{ width: 100 }}
+            />
+            {isTaxRelevantAccount(e.account) && (
+              <select
+                value={e.taxCategory || ""}
+                onChange={(ev) => handleEntryChange(side, i, "taxCategory", ev.target.value)}
+                style={{ width: 80 }}
+              >
+                <option value="">{t("tax.none")}</option>
+                <option value="taxable_10">{t("tax.taxable_10")}</option>
+                <option value="taxable_8">{t("tax.taxable_8")}</option>
+                <option value="exempt">{t("tax.exempt")}</option>
+                <option value="non_taxable">{t("tax.non_taxable")}</option>
+                <option value="tax_free">{t("tax.tax_free")}</option>
+              </select>
+            )}
+            {entries.length > 1 && (
+              <button
+                className="accounting-btn accounting-btn-sm"
+                onClick={() => handleRemoveEntry(side, i)}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+        <button className="accounting-btn accounting-btn-sm" onClick={() => handleAddEntry(side)}>
+          + {t("add")}
+        </button>
+      </div>
+    );
   }
 
   function handleSubmitAccount() {
@@ -268,56 +370,17 @@ export function LedgerPanel(props: LedgerPanelProps) {
             {" "}{t("txn.flag.incomplete")}
           </label>
 
-          <h4>{t("txn.postings")}</h4>
-          {postings.map((p, i) => (
-            <div key={i} className="accounting-posting-row">
-              <select
-                value={p.account}
-                onChange={(e) => handlePostingChange(i, "account", e.target.value)}
-              >
-                <option value="">{t("account")}</option>
-                {ledger.accounts.map((a) => (
-                  <option key={a.name} value={a.name}>{a.name}</option>
-                ))}
-              </select>
-              <input
-                type="number"
-                value={p.amount === null ? "" : p.amount}
-                onChange={(e) => handlePostingChange(i, "amount", e.target.value)}
-                placeholder={t("amount")}
-                style={{ width: 100 }}
-              />
-              <input
-                type="text"
-                value={p.currency || settings.defaultCurrency}
-                onChange={(e) => handlePostingChange(i, "currency", e.target.value)}
-                style={{ width: 50 }}
-              />
-              <select
-                value={p.taxCategory || ""}
-                onChange={(e) => handlePostingChange(i, "taxCategory", e.target.value)}
-                style={{ width: 80 }}
-              >
-                <option value="">{t("tax.none")}</option>
-                <option value="taxable_10">{t("tax.taxable_10")}</option>
-                <option value="taxable_8">{t("tax.taxable_8")}</option>
-                <option value="exempt">{t("tax.exempt")}</option>
-                <option value="non_taxable">{t("tax.non_taxable")}</option>
-                <option value="tax_free">{t("tax.tax_free")}</option>
-              </select>
-              {postings.length > 2 && (
-                <button
-                  className="accounting-btn accounting-btn-sm"
-                  onClick={() => handleRemovePosting(i)}
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
-          <button className="accounting-btn accounting-btn-sm" onClick={handleAddPosting}>
-            + {t("txn.addPosting")}
-          </button>
+          <label>
+            <input
+              type="checkbox"
+              checked={showAllAccounts}
+              onChange={(e) => setShowAllAccounts(e.target.checked)}
+            />
+            {" "}{t("txn.showAllAccounts")}
+          </label>
+
+          {renderPostingGroup("debit", t("table.debit"), debitEntries)}
+          {renderPostingGroup("credit", t("table.credit"), creditEntries)}
         </div>
 
         <div className="accounting-form-actions">
@@ -408,9 +471,9 @@ export function LedgerPanel(props: LedgerPanelProps) {
         {ledger.accounts.map((a) => (
           <div key={a.name} className="accounting-account-item">
             <span className={`accounting-account-type accounting-type-${a.type.toLowerCase()}`}>
-              {a.type.slice(0, 3)}
+              {t(`account.${a.type.toLowerCase()}.short`)}
             </span>
-            <span className="accounting-account-name">{a.name}</span>
+            <span className="accounting-account-name">{tAccount(a.name)}</span>
           </div>
         ))}
       </div>

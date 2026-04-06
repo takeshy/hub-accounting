@@ -23,6 +23,11 @@ const translations: Record<string, Record<string, string>> = {
     "account.income": "Income",
     "account.expenses": "Expenses",
     "account.equity": "Equity",
+    "account.assets.short": "ASS",
+    "account.liabilities.short": "LIA",
+    "account.income.short": "INC",
+    "account.expenses.short": "EXP",
+    "account.equity.short": "EQU",
 
     // Transaction
     "txn.new": "New Transaction",
@@ -70,6 +75,7 @@ const translations: Record<string, Record<string, string>> = {
     "filter.from": "From",
     "filter.to": "To",
     "txn.empty": "No transactions",
+    "txn.showAllAccounts": "Show all accounts",
     "settings.title": "Settings",
     "reset": "Reset",
 
@@ -168,6 +174,11 @@ const translations: Record<string, Record<string, string>> = {
     "account.income": "収益",
     "account.expenses": "費用",
     "account.equity": "純資産",
+    "account.assets.short": "資産",
+    "account.liabilities.short": "負債",
+    "account.income.short": "収益",
+    "account.expenses.short": "費用",
+    "account.equity.short": "純資",
 
     // Transaction
     "txn.new": "新規取引",
@@ -215,6 +226,7 @@ const translations: Record<string, Record<string, string>> = {
     "filter.from": "開始",
     "filter.to": "終了",
     "txn.empty": "取引がありません",
+    "txn.showAllAccounts": "全勘定科目を表示",
     "settings.title": "設定",
     "reset": "リセット",
 
@@ -246,7 +258,17 @@ const translations: Record<string, Record<string, string>> = {
     // freee
     "export.freeeCSV": "freee CSV出力",
 
-    // Japanese account display names
+    // Default template account names
+    "account.Assets:Bank": "銀行預金",
+    "account.Liabilities:CreditCard": "クレジットカード",
+    "account.Income:Salary": "給与",
+    "account.Expenses:Food": "食費",
+    "account.Expenses:Transport": "交通費",
+    "account.Expenses:Housing": "住居費",
+    "account.Expenses:Other": "その他",
+    "account.Equity:Opening-Balances": "開始残高",
+
+    // Japanese template account names
     "account.Assets:Cash": "現金",
     "account.Assets:OrdinaryDeposit": "普通預金",
     "account.Assets:AccountsReceivable": "売掛金",
@@ -299,4 +321,11 @@ export function setLanguage(lang: string): void {
 
 export function t(key: string): string {
   return translations[currentLang]?.[key] ?? translations["en"]?.[key] ?? key;
+}
+
+/** Translate an account name for display. Falls back to the raw name. */
+export function tAccount(name: string): string {
+  const translated = translations[currentLang]?.[`account.${name}`];
+  if (translated) return translated;
+  return name;
 }

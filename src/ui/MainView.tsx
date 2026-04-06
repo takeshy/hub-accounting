@@ -3,7 +3,7 @@
  */
 
 import * as React from "react";
-import { t, setLanguage } from "../i18n";
+import { t, tAccount, setLanguage } from "../i18n";
 import { useStore, setState } from "../store";
 import { ReportType, LedgerData, AccountBalance } from "../types";
 import { removeTransaction, refreshErrors } from "../core/ledger";
@@ -228,7 +228,7 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
           <div className="accounting-txn-postings">
             {txn.postings.map((p, i) => (
               <div key={i} className="accounting-txn-posting">
-                <span className="accounting-posting-account">{p.account}</span>
+                <span className="accounting-posting-account">{tAccount(p.account)}</span>
                 <span className={`accounting-posting-amount ${(p.amount || 0) < 0 ? "accounting-negative" : ""}`}>
                   {p.amount !== null ? formatNum(p.amount, settings.decimalPlaces) : ""}{" "}
                   {p.currency}
@@ -336,7 +336,7 @@ function TrialBalanceView({ report, decimals }: { report: TrialBalanceReport; de
         <tbody>
           {report.entries.map((entry) => (
             <tr key={entry.account}>
-              <td>{entry.account}</td>
+              <td>{tAccount(entry.account)}</td>
               <td style={{ textAlign: "right" }}>
                 {entry.debit > 0 ? formatNum(entry.debit, decimals) : ""}
               </td>
@@ -381,7 +381,7 @@ function AccountBalanceList({
         const display = negate ? -amount : amount;
         return (
           <div key={ab.account} className="accounting-balance-row">
-            <span className="accounting-balance-account">{ab.account}</span>
+            <span className="accounting-balance-account">{tAccount(ab.account)}</span>
             <span className={`accounting-balance-amount ${display < 0 ? "accounting-negative" : ""}`}>
               {formatNum(display, decimals)} {currency}
             </span>
