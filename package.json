@@ -1,0 +1,36 @@
+{
+  "name": "hub-accounting",
+  "version": "0.1.0",
+  "description": "Double-entry bookkeeping plugin for GemiHub - Beancount-compatible plain-text accounting",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "test": "vitest run",
+    "version": "node -e \"const m=require('./manifest.json');m.version=require('./package.json').version;require('fs').writeFileSync('manifest.json',JSON.stringify(m,null,2)+'\\n')\" && git add manifest.json"
+  },
+  "keywords": [
+    "gemihub",
+    "plugin",
+    "accounting",
+    "bookkeeping",
+    "beancount",
+    "double-entry",
+    "ledger"
+  ],
+  "author": "takeshy",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^16.11.6",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "esbuild": "^0.25.2",
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {}
+}
