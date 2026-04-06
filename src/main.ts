@@ -27,6 +27,9 @@ interface PluginAPI {
   };
   drive: {
     createFile(name: string, content: string): Promise<{ id: string; name: string }>;
+    updateFile(id: string, content: string): Promise<void>;
+    readFile(id: string): Promise<string>;
+    listFiles(folder?: string): Promise<Array<{ id: string; name: string }>>;
   };
 }
 

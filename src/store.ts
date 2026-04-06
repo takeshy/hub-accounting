@@ -15,6 +15,7 @@ export interface StoreState {
   filterDateTo: string;
   filterAccount: string;
   filterQuery: string;
+  editingTxnId: string | null;
 }
 
 type Listener = (state: StoreState) => void;
@@ -28,6 +29,7 @@ const initialState: StoreState = {
   filterDateTo: "",
   filterAccount: "",
   filterQuery: "",
+  editingTxnId: null,
 };
 
 let state: StoreState = { ...initialState };
@@ -47,6 +49,17 @@ export function subscribe(fn: Listener): () => void {
   return () => {
     listeners.delete(fn);
   };
+}
+
+/** Registered save function for cross-component saving */
+let saveFn: ((ledger: LedgerData) => Promise<void>) | null = null;
+
+export function registerSaveFn(fn: (ledger: LedgerData) => Promise<void>): void {
+  saveFn = fn;
+}
+
+export async function saveLedger(ledger: LedgerData): Promise<void> {
+  if (saveFn) await saveFn(ledger);
 }
 
 /** React hook - subscribes to store changes. */

@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { t, tAccount, setLanguage } from "../i18n";
-import { setState, useStore } from "../store";
+import { setState, useStore, registerSaveFn } from "../store";
 import {
   Transaction,
   Posting,
@@ -20,6 +20,7 @@ import { parse } from "../core/parser";
 import { format } from "../core/formatter";
 import {
   addTransaction,
+  updateTransaction,
   addAccount,
   createEmptyLedger,
   isBalanced,
@@ -34,6 +35,9 @@ interface PluginAPI {
   };
   drive: {
     createFile(name: string, content: string): Promise<{ id: string; name: string }>;
+    updateFile(id: string, content: string): Promise<void>;
+    readFile(id: string): Promise<string>;
+    listFiles(folder?: string): Promise<Array<{ id: string; name: string }>>;
   };
   language?: string;
 }
@@ -66,6 +70,37 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [creditEntries, setCreditEntries] = React.useState<PostingEntry[]>([emptyEntry()]);
   const [showAllAccounts, setShowAllAccounts] = React.useState(false);
 
+  // Editing transaction ID (set from MainView's edit button)
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+
+  // When MainView sets editingTxnId, populate form and switch to edit view
+  React.useEffect(() => {
+    const txnId = store.editingTxnId;
+    if (!txnId || !ledger) return;
+    const txn = ledger.transactions.find((t) => t.id === txnId);
+    if (!txn) return;
+
+    setEditingId(txnId);
+    setTxnDate(txn.date);
+    setTxnPayee(txn.payee || "");
+    setTxnNarration(txn.narration);
+    setTxnFlag(txn.flag);
+
+    const debits: PostingEntry[] = [];
+    const credits: PostingEntry[] = [];
+    for (const p of txn.postings) {
+      if (p.amount !== null && p.amount < 0) {
+        credits.push({ account: p.account, amount: Math.abs(p.amount), taxCategory: p.taxCategory });
+      } else {
+        debits.push({ account: p.account, amount: p.amount, taxCategory: p.taxCategory });
+      }
+    }
+    setDebitEntries(debits.length > 0 ? debits : [emptyEntry()]);
+    setCreditEntries(credits.length > 0 ? credits : [emptyEntry()]);
+    setView("addTransaction");
+    setState({ editingTxnId: null });
+  }, [store.editingTxnId]);
+
   // Account form state
   const [accName, setAccName] = React.useState("");
   const [accType, setAccType] = React.useState<AccountType>("Expenses");
@@ -87,44 +122,60 @@ export function LedgerPanel(props: LedgerPanelProps) {
     })();
   }, []);
 
-  // Track whether a file-backed ledger has been loaded so the storage
-  // fallback never overwrites it if the async read finishes late.
-  const fileLoadedRef = React.useRef(false);
+  // Track the file ID of the current ledger file
+  const fileIdRef = React.useRef<string | null>(props.fileId || null);
 
-  // Load ledger from file content
+  // Load ledger from file content (when opened via FileTree)
   React.useEffect(() => {
     if (props.fileContent) {
-      fileLoadedRef.current = true;
+      if (props.fileId) fileIdRef.current = props.fileId;
       const ledger = refreshErrors(parse(props.fileContent));
       setState({ ledger, fileName: props.fileName || "ledger.beancount" });
     }
   }, [props.fileContent, props.fileName]);
 
-  // Fallback: load from storage on mount when no file is open
+  // Fallback: find existing .beancount file in drive on mount
   React.useEffect(() => {
     if (props.fileContent) return;
     (async () => {
-      const savedLedger = (await api.storage.get("ledgerData")) as string | null;
-      if (savedLedger && !fileLoadedRef.current) {
-        const ledger = refreshErrors(parse(savedLedger));
-        setState({ ledger, fileName: "ledger.beancount" });
+      try {
+        const files = await api.drive.listFiles();
+        const found = files.find((f) => f.name.endsWith(".beancount") || f.name.endsWith(".bean"));
+        if (found) {
+          fileIdRef.current = found.id;
+          const content = await api.drive.readFile(found.id);
+          const ledger = refreshErrors(parse(content));
+          setState({ ledger, fileName: found.name });
+        }
+      } catch {
+        // no existing file
       }
     })();
   }, []);
 
   const ledger = store.ledger;
 
-  function handleNewLedger() {
+  async function handleNewLedger() {
     const template = settings.defaultCurrency === "JPY" ? "japan_sole_proprietor" : "default";
     const newLedger = createEmptyLedger(settings.defaultCurrency, template);
-    setState({ ledger: newLedger, fileName: "ledger.beancount" });
-    saveLedger(newLedger);
+    const text = format(newLedger, settings.decimalPlaces);
+    const file = await api.drive.createFile("ledger.beancount", text);
+    fileIdRef.current = file.id;
+    setState({ ledger: newLedger, fileName: file.name });
   }
 
   async function saveLedger(l: LedgerData) {
     const text = format(l, settings.decimalPlaces);
-    await api.storage.set("ledgerData", text);
+    if (fileIdRef.current) {
+      await api.drive.updateFile(fileIdRef.current, text);
+    } else {
+      const file = await api.drive.createFile("ledger.beancount", text);
+      fileIdRef.current = file.id;
+    }
   }
+
+  // Register save function so MainView can also trigger saves
+  React.useEffect(() => { registerSaveFn(saveLedger); }, []);
 
   /** Check if an account is Income or Expenses (tax-relevant) */
   function isTaxRelevantAccount(accountName: string): boolean {
@@ -145,13 +196,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
     setter((prev) => {
       const next = [...prev];
       if (field === "amount") {
-        const amt = value === "" ? null : Number(value);
-        next[idx] = { ...next[idx], amount: amt };
-        // Auto-fill the other side when both sides have exactly 1 entry
-        // and the other side's amount is empty
-        if (next.length === 1 && otherEntries.length === 1 && otherEntries[0].amount === null && amt !== null) {
-          otherSetter([{ ...otherEntries[0], amount: amt }]);
-        }
+        next[idx] = { ...next[idx], amount: value === "" ? null : Number(value) };
       } else if (field === "taxCategory") {
         next[idx] = { ...next[idx], taxCategory: value ? (value as TaxCategory) : undefined };
       } else if (field === "account") {
@@ -162,6 +207,10 @@ export function LedgerPanel(props: LedgerPanelProps) {
           newEntry.taxCategory = undefined;
         }
         next[idx] = newEntry;
+        // Auto-fill amount from the other side when selecting account
+        if (next.length === 1 && otherEntries.length === 1 && newEntry.amount === null && otherEntries[0].amount !== null) {
+          next[idx] = { ...next[idx], ...newEntry, amount: otherEntries[0].amount };
+        }
       }
       return next;
     });
@@ -211,11 +260,17 @@ export function LedgerPanel(props: LedgerPanelProps) {
       return;
     }
 
-    const newLedger = addTransaction(ledger, txn);
+    let newLedger: LedgerData;
+    if (editingId) {
+      newLedger = updateTransaction(ledger, editingId, txn);
+    } else {
+      newLedger = addTransaction(ledger, txn);
+    }
     setState({ ledger: newLedger });
     saveLedger(newLedger);
 
     // Reset form
+    setEditingId(null);
     setTxnPayee("");
     setTxnNarration("");
     setDebitEntries([emptyEntry()]);
@@ -304,22 +359,12 @@ export function LedgerPanel(props: LedgerPanelProps) {
     setView("main");
   }
 
-  async function handleExport() {
-    if (!ledger) return;
-    const text = format(ledger, settings.decimalPlaces);
-    await api.drive.createFile("ledger.beancount", text);
-  }
-
   async function handleExportFreeeCSV() {
     if (!ledger) return;
     const csv = exportFreeeCSV(ledger, "", "9999-12-31", settings.defaultCurrency, t);
     await api.drive.createFile("freee_journal.csv", csv);
   }
 
-  async function handleSave() {
-    if (!ledger) return;
-    await saveLedger(ledger);
-  }
 
   // --- Render ---
 
@@ -340,7 +385,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
   if (view === "addTransaction") {
     return (
       <div className="accounting-panel">
-        <h3>{t("txn.new")}</h3>
+        <h3>{editingId ? t("txn.edit") : t("txn.new")}</h3>
         <div className="accounting-form">
           <label>{t("date")}</label>
           <input type="date" value={txnDate} onChange={(e) => setTxnDate(e.target.value)} />
@@ -387,7 +432,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
           <button className="accounting-btn accounting-btn-primary" onClick={handleSubmitTransaction}>
             {t("save")}
           </button>
-          <button className="accounting-btn" onClick={() => setView("main")}>
+          <button className="accounting-btn" onClick={() => { setEditingId(null); setView("main"); }}>
             {t("cancel")}
           </button>
         </div>
@@ -479,12 +524,6 @@ export function LedgerPanel(props: LedgerPanelProps) {
       </div>
 
       <div className="accounting-actions" style={{ marginTop: 16 }}>
-        <button className="accounting-btn" onClick={handleSave}>
-          {t("file.save")}
-        </button>
-        <button className="accounting-btn" onClick={handleExport}>
-          {t("file.export")}
-        </button>
         <button className="accounting-btn" onClick={handleExportFreeeCSV}>
           {t("export.freeeCSV")}
         </button>

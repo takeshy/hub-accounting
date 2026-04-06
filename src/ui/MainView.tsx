@@ -4,9 +4,10 @@
 
 import * as React from "react";
 import { t, tAccount, setLanguage } from "../i18n";
-import { useStore, setState } from "../store";
+import { useStore, setState, saveLedger as storeSaveLedger } from "../store";
 import { ReportType, LedgerData, AccountBalance } from "../types";
 import { removeTransaction, refreshErrors } from "../core/ledger";
+
 import {
   generateBalanceSheet,
   generateIncomeStatement,
@@ -15,7 +16,7 @@ import {
   IncomeStatementReport,
   TrialBalanceReport,
 } from "../core/reports";
-import { format } from "../core/formatter";
+
 import { parse } from "../core/parser";
 import { generateConsumptionTaxReport, ConsumptionTaxReport } from "../core/tax";
 
@@ -191,12 +192,10 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
 
   async function handleDelete(id: string) {
     const newLedger = removeTransaction(ledger, id);
-    const text = format(newLedger, settings.decimalPlaces);
     setState({ ledger: newLedger });
     try {
-      await api.storage.set("ledgerData", text);
+      await storeSaveLedger(newLedger);
     } catch {
-      // Revert on save failure
       setState({ ledger });
     }
   }
@@ -217,6 +216,13 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
             </span>
             {txn.payee && <span className="accounting-txn-payee">{txn.payee}</span>}
             <span className="accounting-txn-narration">{txn.narration}</span>
+            <button
+              className="accounting-btn accounting-btn-sm"
+              onClick={() => setState({ editingTxnId: txn.id })}
+              title={t("edit")}
+            >
+              ✎
+            </button>
             <button
               className="accounting-btn accounting-btn-sm accounting-btn-danger"
               onClick={() => handleDelete(txn.id)}

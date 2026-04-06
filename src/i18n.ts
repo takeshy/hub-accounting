@@ -31,6 +31,7 @@ const translations: Record<string, Record<string, string>> = {
 
     // Transaction
     "txn.new": "New Transaction",
+    "txn.edit": "Edit Transaction",
     "txn.payee": "Payee",
     "txn.narration": "Narration",
     "txn.flag.complete": "Complete",
@@ -182,6 +183,7 @@ const translations: Record<string, Record<string, string>> = {
 
     // Transaction
     "txn.new": "新規取引",
+    "txn.edit": "取引を編集",
     "txn.payee": "取引先",
     "txn.narration": "摘要",
     "txn.flag.complete": "確定",
