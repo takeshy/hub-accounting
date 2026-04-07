@@ -22,6 +22,7 @@ import {
 
 import { parse } from "../core/parser";
 import { generateConsumptionTaxReport, ConsumptionTaxReport } from "../core/tax";
+import { getFiscalYear, getFiscalYearRange } from "../core/fiscal";
 import { DashboardView } from "./DashboardView";
 
 interface PluginAPI {
@@ -117,15 +118,21 @@ export function MainView(props: MainViewProps) {
       </div>
 
       <div className="accounting-report-content">
-        {activeReport === "dashboard" && (
-          <DashboardView
-            ledger={ledger}
-            dateFrom={filterDateFrom || "1970-01-01"}
-            dateTo={filterDateTo || today}
-            currency={currency}
-            decimals={settings.decimalPlaces}
-          />
-        )}
+        {activeReport === "dashboard" && (() => {
+          const fy = getFiscalYearRange(
+            getFiscalYear(today, settings.fiscalYearStartMonth),
+            settings.fiscalYearStartMonth
+          );
+          return (
+            <DashboardView
+              ledger={ledger}
+              dateFrom={filterDateFrom || fy.start}
+              dateTo={filterDateTo || fy.end}
+              currency={currency}
+              decimals={settings.decimalPlaces}
+            />
+          );
+        })()}
         {activeReport === "journal" && <JournalView ledger={ledger} api={props.api} />}
         {activeReport === "balance_sheet" && (
           <BalanceSheetView
