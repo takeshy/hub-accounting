@@ -8,6 +8,9 @@
 import { LedgerPanel } from "./ui/LedgerPanel";
 import { SettingsPanel } from "./ui/SettingsPanel";
 import { MainView } from "./ui/MainView";
+import { JournalTemplate } from "./types";
+import { getDefaultTemplates } from "./core/templates";
+import { setState } from "./store";
 
 interface PluginAPI {
   registerView(view: {
@@ -53,6 +56,21 @@ class AccountingPlugin {
     api.registerSettingsTab({
       component: SettingsPanel,
     });
+
+    // Load templates from storage (async, fire-and-forget)
+    (async () => {
+      try {
+        const saved = await api.storage.get("journalTemplates") as JournalTemplate[] | null;
+        // null = never saved → init with defaults.  Array (even empty) = user's intent.
+        const templates = Array.isArray(saved) ? saved : getDefaultTemplates();
+        setState({ templates });
+        if (!Array.isArray(saved)) {
+          await api.storage.set("journalTemplates", templates);
+        }
+      } catch {
+        setState({ templates: getDefaultTemplates() });
+      }
+    })();
   }
 
   onunload(): void {

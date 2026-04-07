@@ -162,6 +162,38 @@ export interface AccountingSettings {
   fiscalYearStartMonth: number;
 }
 
+/** A posting within a journal entry template */
+export interface TemplatePosting {
+  /** Account name */
+  account: string;
+  /**
+   * Multiplier applied to the user-supplied amount.
+   * e.g., 1 = full amount (debit), -1 = full amount (credit), -0.1021 = 10.21% withholding
+   * null = auto-balance (Beancount fills this; at most one per template)
+   */
+  multiplier: number | null;
+  /** Currency override (defaults to settings.defaultCurrency) */
+  currency?: string;
+  /** Tax category for Income/Expenses postings */
+  taxCategory?: TaxCategory;
+}
+
+/** A reusable journal entry template registered as a slash command */
+export interface JournalTemplate {
+  /** Unique identifier */
+  id: string;
+  /** Slash command name (e.g., "売上入金") */
+  name: string;
+  /** Description shown in autocomplete */
+  description: string;
+  /** Default payee (optional) */
+  payee?: string;
+  /** Default narration */
+  narration: string;
+  /** Posting definitions */
+  postings: TemplatePosting[];
+}
+
 /** Default settings */
 export const DEFAULT_SETTINGS: AccountingSettings = {
   defaultCurrency: "JPY",

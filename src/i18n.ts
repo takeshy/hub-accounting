@@ -175,6 +175,34 @@ const translations: Record<string, Record<string, string>> = {
     "account.Equity:OwnerContribution": "Owner Contribution",
     "account.Equity:RetainedEarnings": "Retained Earnings",
 
+    // Templates
+    "template.title": "Templates",
+    "template.new": "New Template",
+    "template.edit": "Edit Template",
+    "template.name": "Command Name",
+    "template.description": "Description",
+    "template.narration": "Default Narration",
+    "template.payee": "Default Payee",
+    "template.multiplier": "Multiplier",
+    "template.auto": "Auto",
+    "template.postings": "Postings",
+    "template.addPosting": "Add Posting",
+    "template.success": "Transaction registered from template.",
+    "template.error.noLedger": "Error: No ledger loaded. Please open or create a ledger first.",
+    "template.error.usage": "Usage:",
+    "template.error.unbalanced": "Error: Template produced an unbalanced transaction.",
+    "template.error.deleted": "Error: This template has been deleted or renamed.",
+    "template.error.duplicateName": "A template with this command name already exists.",
+    "template.error.minPostings": "At least 2 postings with accounts are required.",
+    "template.error.multiAuto": "Only one auto-balance posting (empty multiplier) is allowed.",
+    "template.resetDefaults": "Reset to Defaults",
+    "template.resetConfirm": "Reset all templates to defaults? Custom templates will be lost.",
+
+    // AI input
+    "ai.placeholder": "Type / for templates...",
+    "ai.loading": "Processing...",
+    "ai.noApi": "AI is not available.",
+
     // Placeholder
     "accounts.nameExample": "Bank:Checking",
 
@@ -370,6 +398,34 @@ const translations: Record<string, Record<string, string>> = {
     "account.Equity:OwnerDraw": "事業主貸",
     "account.Equity:OwnerContribution": "事業主借",
     "account.Equity:RetainedEarnings": "繰越利益",
+
+    // Templates
+    "template.title": "定型仕訳テンプレート",
+    "template.new": "新規テンプレート",
+    "template.edit": "テンプレート編集",
+    "template.name": "コマンド名",
+    "template.description": "説明",
+    "template.narration": "摘要（デフォルト）",
+    "template.payee": "取引先（デフォルト）",
+    "template.multiplier": "倍率",
+    "template.auto": "自動",
+    "template.postings": "仕訳明細",
+    "template.addPosting": "明細追加",
+    "template.success": "テンプレートから仕訳を登録しました。",
+    "template.error.noLedger": "エラー: 帳簿が読み込まれていません。帳簿を開くか新規作成してください。",
+    "template.error.usage": "使い方:",
+    "template.error.unbalanced": "エラー: テンプレートから生成した仕訳の貸借が一致しません。",
+    "template.error.deleted": "エラー: このテンプレートは削除または名前変更されています。",
+    "template.error.duplicateName": "同じコマンド名のテンプレートが既に存在します。",
+    "template.error.minPostings": "勘定科目が設定された仕訳明細が2件以上必要です。",
+    "template.error.multiAuto": "自動計算（倍率が空）の明細は1件までです。",
+    "template.resetDefaults": "初期値に戻す",
+    "template.resetConfirm": "すべてのテンプレートを初期値に戻しますか？カスタムテンプレートは失われます。",
+
+    // AI input
+    "ai.placeholder": "/ でテンプレート入力...",
+    "ai.loading": "処理中...",
+    "ai.noApi": "AIが利用できません。",
 
     // Placeholder
     "accounts.nameExample": "普通預金",

@@ -4,7 +4,7 @@
  */
 
 import * as React from "react";
-import { LedgerData, ReportType, AccountingSettings, DEFAULT_SETTINGS } from "./types";
+import { LedgerData, ReportType, AccountingSettings, DEFAULT_SETTINGS, JournalTemplate } from "./types";
 
 export interface StoreState {
   ledger: LedgerData | null;
@@ -16,6 +16,7 @@ export interface StoreState {
   filterAccount: string;
   filterQuery: string;
   editingTxnId: string | null;
+  templates: JournalTemplate[];
 }
 
 type Listener = (state: StoreState) => void;
@@ -30,6 +31,7 @@ const initialState: StoreState = {
   filterAccount: "",
   filterQuery: "",
   editingTxnId: null,
+  templates: [],
 };
 
 let state: StoreState = { ...initialState };

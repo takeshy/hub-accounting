@@ -15,6 +15,9 @@ import {
   AccountingSettings,
   DEFAULT_SETTINGS,
   TaxCategory,
+  JournalTemplate,
+  TemplatePosting,
+  TAX_CATEGORIES,
 } from "../types";
 import { parse } from "../core/parser";
 import { format } from "../core/formatter";
@@ -30,6 +33,7 @@ import { exportFreeeCSV } from "../core/csv";
 import { exportToGoogleSheets, SheetsAPI } from "../core/sheets";
 import { getFiscalYear, getFiscalYearFileName, getFiscalYearRange, carryForward } from "../core/fiscal";
 import { CsvImportDialog } from "./CsvImportDialog";
+import { getDefaultTemplates, applyTemplate } from "../core/templates";
 
 interface PluginAPI {
   storage: {
@@ -43,6 +47,12 @@ interface PluginAPI {
     listFiles(folder?: string): Promise<Array<{ id: string; name: string }>>;
   };
   sheets?: SheetsAPI;
+  gemini?: {
+    chat(
+      messages: Array<{ role: string; content: string }>,
+      options?: { model?: string; systemPrompt?: string },
+    ): Promise<string>;
+  };
   language?: string;
 }
 
@@ -54,7 +64,7 @@ interface LedgerPanelProps {
   language?: string;
 }
 
-type PanelView = "main" | "addTransaction" | "addAccount";
+type PanelView = "main" | "addTransaction" | "addAccount" | "templates" | "editTemplate";
 
 export function LedgerPanel(props: LedgerPanelProps) {
   const { api } = props;
@@ -74,6 +84,25 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [creditEntries, setCreditEntries] = React.useState<PostingEntry[]>([emptyEntry()]);
   const [showAllAccounts, setShowAllAccounts] = React.useState(false);
   const [showImport, setShowImport] = React.useState(false);
+
+  // AI input state
+  const [showAiInput, setShowAiInput] = React.useState(false);
+  const [aiInput, setAiInput] = React.useState("");
+  const [aiResult, setAiResult] = React.useState("");
+  const [aiLoading, setAiLoading] = React.useState(false);
+  const [acIndex, setAcIndex] = React.useState(0);
+  const aiInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Template editing state
+  const [editingTemplate, setEditingTemplate] = React.useState<JournalTemplate | null>(null);
+  const [tplName, setTplName] = React.useState("");
+  const [tplDescription, setTplDescription] = React.useState("");
+  const [tplPayee, setTplPayee] = React.useState("");
+  const [tplNarration, setTplNarration] = React.useState("");
+  const [tplPostings, setTplPostings] = React.useState<TemplatePosting[]>([
+    { account: "", multiplier: 1 },
+    { account: "", multiplier: null },
+  ]);
 
   // Fiscal year state
   const [currentFiscalYear, setCurrentFiscalYear] = React.useState<number>(
@@ -449,6 +478,217 @@ export function LedgerPanel(props: LedgerPanelProps) {
     setState({ ledger: newLedger, fileName: `${nextYear}.beancount` });
   }
 
+  // --- Template management ---
+  function startEditTemplate(tmpl: JournalTemplate | null) {
+    if (tmpl) {
+      setEditingTemplate(tmpl);
+      setTplName(tmpl.name);
+      setTplDescription(tmpl.description);
+      setTplPayee(tmpl.payee || "");
+      setTplNarration(tmpl.narration);
+      setTplPostings([...tmpl.postings]);
+    } else {
+      setEditingTemplate(null);
+      setTplName("");
+      setTplDescription("");
+      setTplPayee("");
+      setTplNarration("");
+      setTplPostings([
+        { account: "", multiplier: 1 },
+        { account: "", multiplier: null },
+      ]);
+    }
+    setView("editTemplate");
+  }
+
+  async function handleSaveTemplate() {
+    if (!tplName || !tplNarration) return;
+
+    // Validate name uniqueness (exclude self when editing)
+    const duplicate = store.templates.find(
+      (t) => t.name === tplName && t.id !== (editingTemplate?.id ?? ""),
+    );
+    if (duplicate) {
+      alert(t("template.error.duplicateName"));
+      return;
+    }
+
+    // Validate postings: filter empties, then enforce rules
+    const validPostings = tplPostings.filter((p) => p.account);
+    if (validPostings.length < 2) {
+      alert(t("template.error.minPostings"));
+      return;
+    }
+    const autoCount = validPostings.filter((p) => p.multiplier === null).length;
+    if (autoCount > 1) {
+      alert(t("template.error.multiAuto"));
+      return;
+    }
+
+    const templates = [...store.templates];
+    const newTmpl: JournalTemplate = {
+      id: editingTemplate?.id || `tpl_${Date.now().toString(36)}`,
+      name: tplName,
+      description: tplDescription || tplNarration,
+      payee: tplPayee || undefined,
+      narration: tplNarration,
+      postings: validPostings,
+    };
+
+    if (editingTemplate) {
+      const idx = templates.findIndex((t) => t.id === editingTemplate.id);
+      if (idx >= 0) templates[idx] = newTmpl;
+    } else {
+      templates.push(newTmpl);
+    }
+
+    setState({ templates });
+    await api.storage.set("journalTemplates", templates);
+
+    setView("templates");
+  }
+
+  async function handleDeleteTemplate(id: string) {
+    const templates = store.templates.filter((t) => t.id !== id);
+    setState({ templates });
+    await api.storage.set("journalTemplates", templates);
+    // Note: deleted command names remain in autocomplete until reload (host has no unregister API)
+  }
+
+  async function handleResetTemplates() {
+    if (!confirm(t("template.resetConfirm"))) return;
+    const templates = getDefaultTemplates();
+    setState({ templates });
+    await api.storage.set("journalTemplates", templates);
+
+  }
+
+  function handleTplPostingChange(idx: number, field: string, value: string) {
+    setTplPostings((prev) => {
+      const next = [...prev];
+      if (field === "account") {
+        next[idx] = { ...next[idx], account: value };
+      } else if (field === "multiplier") {
+        next[idx] = { ...next[idx], multiplier: value === "" ? null : Number(value) };
+      } else if (field === "taxCategory") {
+        next[idx] = { ...next[idx], taxCategory: value ? (value as TaxCategory) : undefined };
+      }
+      return next;
+    });
+  }
+
+  // --- AI input with / autocomplete ---
+  const acItems = React.useMemo(() => {
+    if (!aiInput.startsWith("/")) return [];
+    const query = aiInput.slice(1).split(/\s/)[0].toLowerCase();
+    return store.templates.filter(
+      (tmpl) =>
+        tmpl.name.toLowerCase().includes(query) ||
+        tmpl.description.toLowerCase().includes(query),
+    );
+  }, [aiInput, store.templates]);
+
+  const showAc = aiInput.startsWith("/") && !aiInput.includes(" ") && acItems.length > 0;
+
+  function handleAiInputChange(value: string) {
+    setAiInput(value);
+    setAcIndex(0);
+    setAiResult("");
+  }
+
+  function handleAcSelect(tmpl: JournalTemplate) {
+    setAiInput(`/${tmpl.name} `);
+    setAcIndex(0);
+    aiInputRef.current?.focus();
+  }
+
+  function handleAiKeyDown(e: React.KeyboardEvent) {
+    if (showAc) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setAcIndex((i) => (i + 1) % acItems.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setAcIndex((i) => (i - 1 + acItems.length) % acItems.length);
+      } else if (e.key === "Tab" || e.key === "Enter") {
+        e.preventDefault();
+        handleAcSelect(acItems[acIndex]);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setAiInput("");
+      }
+      return;
+    }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleAiSubmit();
+    }
+  }
+
+  async function handleAiSubmit() {
+    const input = aiInput.trim();
+    if (!input || !ledger) return;
+
+    // Slash command: /{name} {amount} [{narration}]
+    const slashMatch = input.match(/^\/(\S+)\s*(.*)/);
+    if (slashMatch) {
+      const cmdName = slashMatch[1];
+      const args = slashMatch[2];
+      const tmpl = store.templates.find((t) => t.name === cmdName);
+      if (!tmpl) {
+        setAiResult(t("template.error.deleted"));
+        return;
+      }
+      setAiLoading(true);
+      try {
+        const { result, ledger: newLedger } = applyTemplate(tmpl, args, {
+          ledger,
+          settings,
+          onUpdate: saveLedger,
+        });
+        if (newLedger) {
+          setState({ ledger: newLedger });
+          await saveLedger(newLedger);
+        }
+        setAiResult(result);
+        setAiInput("");
+      } finally {
+        setAiLoading(false);
+      }
+      return;
+    }
+
+    // Free-text: send to AI (if gemini API available)
+    if (api.gemini) {
+      setAiLoading(true);
+      try {
+        const gemini = api.gemini;
+        const accountList = ledger.accounts.map((a) => a.name).join(", ");
+        const systemPrompt = [
+          "You are an accounting assistant. The user has a Beancount ledger.",
+          `Available accounts: ${accountList}`,
+          `Default currency: ${settings.defaultCurrency}`,
+          "When the user describes a transaction, output ONLY a Beancount transaction entry.",
+          "Format: YYYY-MM-DD * \"Payee\" \"Narration\"\\n  Account1  AMOUNT CURRENCY\\n  Account2  AMOUNT CURRENCY",
+          "Do not include any explanation, only the transaction.",
+        ].join("\n");
+        const result = await gemini.chat(
+          [{ role: "user", content: input }],
+          { systemPrompt },
+        );
+        setAiResult(result);
+        setAiInput("");
+      } catch (err) {
+        setAiResult(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        setAiLoading(false);
+      }
+      return;
+    }
+
+    setAiResult(t("ai.noApi"));
+  }
+
   // --- Render ---
 
   if (!ledger) {
@@ -559,6 +799,149 @@ export function LedgerPanel(props: LedgerPanelProps) {
     );
   }
 
+  if (view === "templates") {
+    return (
+      <div className="accounting-panel">
+        <h3>{t("template.title")}</h3>
+        <div className="accounting-actions">
+          <button className="accounting-btn accounting-btn-primary" onClick={() => startEditTemplate(null)}>
+            + {t("template.new")}
+          </button>
+          <button className="accounting-btn accounting-btn-sm" onClick={handleResetTemplates}>
+            {t("template.resetDefaults")}
+          </button>
+        </div>
+
+        <div className="accounting-account-list">
+          {store.templates.map((tmpl) => (
+            <div key={tmpl.id} className="accounting-account-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+              <div style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 600 }}>/{tmpl.name}</span>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button className="accounting-btn accounting-btn-sm" onClick={() => startEditTemplate(tmpl)}>
+                    {t("edit")}
+                  </button>
+                  <button className="accounting-btn accounting-btn-sm" onClick={() => handleDeleteTemplate(tmpl.id)}>
+                    {t("delete")}
+                  </button>
+                </div>
+              </div>
+              <span style={{ fontSize: 12, color: "#888" }}>{tmpl.description}</span>
+              <span style={{ fontSize: 11, color: "#666" }}>
+                {tmpl.postings.map((p) => tAccount(p.account)).join(" / ")}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="accounting-form-actions">
+          <button className="accounting-btn" onClick={() => setView("main")}>
+            {t("close")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "editTemplate") {
+    const accounts = ledger?.accounts || [];
+    return (
+      <div className="accounting-panel">
+        <h3>{editingTemplate ? t("template.edit") : t("template.new")}</h3>
+        <div className="accounting-form">
+          <label>{t("template.name")}</label>
+          <input
+            type="text"
+            value={tplName}
+            onChange={(e) => setTplName(e.target.value)}
+            placeholder="売上入金"
+          />
+
+          <label>{t("template.description")}</label>
+          <input
+            type="text"
+            value={tplDescription}
+            onChange={(e) => setTplDescription(e.target.value)}
+            placeholder={t("template.description")}
+          />
+
+          <label>{t("template.payee")}</label>
+          <input
+            type="text"
+            value={tplPayee}
+            onChange={(e) => setTplPayee(e.target.value)}
+            placeholder={t("template.payee")}
+          />
+
+          <label>{t("template.narration")}</label>
+          <input
+            type="text"
+            value={tplNarration}
+            onChange={(e) => setTplNarration(e.target.value)}
+            placeholder={t("template.narration")}
+          />
+
+          <h4>{t("template.postings")}</h4>
+          {tplPostings.map((p, i) => (
+            <div key={i} className="accounting-posting-row">
+              <select
+                value={p.account}
+                onChange={(e) => handleTplPostingChange(i, "account", e.target.value)}
+              >
+                <option value="">{t("account")}</option>
+                {accounts.map((a) => (
+                  <option key={a.name} value={a.name}>{tAccount(a.name)}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                value={p.multiplier === null ? "" : p.multiplier}
+                onChange={(e) => handleTplPostingChange(i, "multiplier", e.target.value)}
+                placeholder={t("template.auto")}
+                title={t("template.multiplier")}
+                step="any"
+                style={{ width: 70 }}
+              />
+              <select
+                value={p.taxCategory || ""}
+                onChange={(e) => handleTplPostingChange(i, "taxCategory", e.target.value)}
+                style={{ width: 80 }}
+              >
+                <option value="">{t("tax.none")}</option>
+                {TAX_CATEGORIES.map((tc) => (
+                  <option key={tc} value={tc}>{t(`tax.${tc}`)}</option>
+                ))}
+              </select>
+              {tplPostings.length > 2 && (
+                <button
+                  className="accounting-btn accounting-btn-sm"
+                  onClick={() => setTplPostings((prev) => prev.filter((_, j) => j !== i))}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            className="accounting-btn accounting-btn-sm"
+            onClick={() => setTplPostings((prev) => [...prev, { account: "", multiplier: null }])}
+          >
+            + {t("template.addPosting")}
+          </button>
+        </div>
+
+        <div className="accounting-form-actions">
+          <button className="accounting-btn accounting-btn-primary" onClick={handleSaveTemplate}>
+            {t("save")}
+          </button>
+          <button className="accounting-btn" onClick={() => setView("templates")}>
+            {t("cancel")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Main view
   return (
     <div className="accounting-panel">
@@ -590,6 +973,47 @@ export function LedgerPanel(props: LedgerPanelProps) {
         <button className="accounting-btn" onClick={() => setView("addAccount")}>
           + {t("accounts.open")}
         </button>
+        <button className="accounting-btn" onClick={() => setView("templates")}>
+          {t("template.title")}
+        </button>
+      </div>
+
+      {/* AI Input area */}
+      <div className="accounting-ai-input" style={{ marginTop: 8 }}>
+        <div style={{ position: "relative" }}>
+          <input
+            ref={aiInputRef}
+            type="text"
+            value={aiInput}
+            onChange={(e) => handleAiInputChange(e.target.value)}
+            onKeyDown={handleAiKeyDown}
+            onFocus={() => setShowAiInput(true)}
+            placeholder={t("ai.placeholder")}
+            disabled={aiLoading}
+            style={{ width: "100%", boxSizing: "border-box" }}
+          />
+          {showAc && (
+            <div className="accounting-autocomplete">
+              {acItems.map((tmpl, i) => (
+                <div
+                  key={tmpl.id}
+                  className={`accounting-autocomplete-item${i === acIndex ? " accounting-autocomplete-active" : ""}`}
+                  onMouseDown={(e) => { e.preventDefault(); handleAcSelect(tmpl); }}
+                  onMouseEnter={() => setAcIndex(i)}
+                >
+                  <span className="accounting-autocomplete-name">/{tmpl.name}</span>
+                  <span className="accounting-autocomplete-desc">{tmpl.description}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {aiLoading && (
+          <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>{t("ai.loading")}</div>
+        )}
+        {aiResult && (
+          <pre className="accounting-ai-result">{aiResult}</pre>
+        )}
       </div>
 
       <div className="accounting-stats">
