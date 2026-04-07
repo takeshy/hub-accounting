@@ -27,6 +27,7 @@ import {
   refreshErrors,
 } from "../core/ledger";
 import { exportFreeeCSV } from "../core/csv";
+import { exportToGoogleSheets, SheetsAPI } from "../core/sheets";
 import { getFiscalYear, getFiscalYearFileName, getFiscalYearRange, carryForward } from "../core/fiscal";
 import { CsvImportDialog } from "./CsvImportDialog";
 
@@ -41,6 +42,7 @@ interface PluginAPI {
     readFile(id: string): Promise<string>;
     listFiles(folder?: string): Promise<Array<{ id: string; name: string }>>;
   };
+  sheets?: SheetsAPI;
   language?: string;
 }
 
@@ -395,6 +397,24 @@ export function LedgerPanel(props: LedgerPanelProps) {
     await api.drive.createFile(`freee_${currentFiscalYear}.csv`, csv);
   }
 
+  const [exporting, setExporting] = React.useState(false);
+
+  async function handleExportGoogleSheets() {
+    if (!ledger || !api.sheets) return;
+    setExporting(true);
+    try {
+      const { start, end } = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
+      const url = await exportToGoogleSheets(
+        api.sheets, ledger, currentFiscalYear, start, end, settings.defaultCurrency, t
+      );
+      window.open(url, "_blank");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function handleSwitchYear(year: number) {
     const entry = availableYears.find((y) => y.year === year);
     if (!entry) return;
@@ -612,6 +632,11 @@ export function LedgerPanel(props: LedgerPanelProps) {
         <button className="accounting-btn" onClick={handleExportFreeeCSV}>
           {t("export.freeeCSV")}
         </button>
+        {api.sheets && (
+          <button className="accounting-btn" onClick={handleExportGoogleSheets} disabled={exporting}>
+            {exporting ? t("export.exporting") : t("export.googleSheets")}
+          </button>
+        )}
       </div>
 
       {showImport && (

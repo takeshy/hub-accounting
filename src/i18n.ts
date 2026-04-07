@@ -113,6 +113,8 @@ const translations: Record<string, Record<string, string>> = {
 
     // freee
     "export.freeeCSV": "Export freee CSV",
+    "export.googleSheets": "Export to Google Sheets",
+    "export.exporting": "Exporting...",
 
     // CSV Import
     "import.csv": "Import Bank CSV",
@@ -297,6 +299,8 @@ const translations: Record<string, Record<string, string>> = {
 
     // freee
     "export.freeeCSV": "freee CSV出力",
+    "export.googleSheets": "Google Sheets出力",
+    "export.exporting": "出力中...",
 
     // CSV Import
     "import.csv": "銀行CSV取込",
