@@ -95,6 +95,18 @@ const translations: Record<string, Record<string, string>> = {
     "tax.tax_free": "Tax-free",
     "tax.none": "None",
 
+    // General & subsidiary ledger
+    "report.generalLedger": "General Ledger",
+    "report.subsidiaryLedger": "Subsidiary Ledger",
+    "ledger.selectAccount": "Select account",
+    "ledger.selectPayee": "Select payee",
+    "ledger.counterpart": "Counterpart",
+    "ledger.openingBalance": "Opening Balance",
+    "ledger.closingBalance": "Closing Balance",
+    "ledger.noPayees": "No payees found",
+    "ledger.noEntries": "No entries",
+    "ledger.balance": "Balance",
+
     // Consumption tax report
     "report.consumptionTax": "Consumption Tax",
     "tax.sales": "Sales",
@@ -312,6 +324,18 @@ const translations: Record<string, Record<string, string>> = {
     "tax.non_taxable": "不課税",
     "tax.tax_free": "免税",
     "tax.none": "なし",
+
+    // General & subsidiary ledger
+    "report.generalLedger": "勘定元帳",
+    "report.subsidiaryLedger": "補助元帳",
+    "ledger.selectAccount": "勘定科目を選択",
+    "ledger.selectPayee": "取引先を選択",
+    "ledger.counterpart": "相手科目",
+    "ledger.openingBalance": "前期繰越",
+    "ledger.closingBalance": "次期繰越",
+    "ledger.noPayees": "取引先がありません",
+    "ledger.noEntries": "明細がありません",
+    "ledger.balance": "残高",
 
     // Consumption tax report
     "report.consumptionTax": "消費税集計",

@@ -3,6 +3,8 @@ import {
   generateBalanceSheet,
   generateIncomeStatement,
   generateTrialBalance,
+  generateGeneralLedger,
+  generateSubsidiaryLedger,
 } from "./reports";
 import { addTransaction, createEmptyLedger } from "./ledger";
 import { LedgerData } from "../types";
@@ -129,5 +131,143 @@ describe("generateTrialBalance", () => {
     for (const entry of tb.entries) {
       expect(["Assets", "Liabilities", "Income", "Expenses", "Equity"]).toContain(entry.type);
     }
+  });
+});
+
+function buildLedgerWithPayees(): LedgerData {
+  let l = createEmptyLedger("JPY");
+  l = addTransaction(l, {
+    date: "2024-01-10",
+    flag: "*",
+    payee: "ClientA",
+    narration: "Invoice 001",
+    postings: [
+      { account: "Assets:AccountsReceivable", amount: 100000, currency: "JPY" },
+      { account: "Income:Sales", amount: -100000, currency: "JPY" },
+    ],
+    tags: [],
+    links: [],
+  });
+  l = addTransaction(l, {
+    date: "2024-01-20",
+    flag: "*",
+    payee: "ClientA",
+    narration: "Payment received",
+    postings: [
+      { account: "Assets:Bank", amount: 100000, currency: "JPY" },
+      { account: "Assets:AccountsReceivable", amount: -100000, currency: "JPY" },
+    ],
+    tags: [],
+    links: [],
+  });
+  l = addTransaction(l, {
+    date: "2024-02-05",
+    flag: "*",
+    payee: "SupplierX",
+    narration: "Office supplies",
+    postings: [
+      { account: "Expenses:Supplies", amount: 5000, currency: "JPY" },
+      { account: "Assets:Cash", amount: -5000, currency: "JPY" },
+    ],
+    tags: [],
+    links: [],
+  });
+  l = addTransaction(l, {
+    date: "2024-02-15",
+    flag: "*",
+    payee: "ClientA",
+    narration: "Invoice 002",
+    postings: [
+      { account: "Assets:AccountsReceivable", amount: 200000, currency: "JPY" },
+      { account: "Income:Sales", amount: -200000, currency: "JPY" },
+    ],
+    tags: [],
+    links: [],
+  });
+  return l;
+}
+
+describe("generateGeneralLedger", () => {
+  it("shows all entries for a given account with running balance", () => {
+    const l = buildLedgerWithPayees();
+    const gl = generateGeneralLedger(l, "Assets:AccountsReceivable", "2024-01-01", "2024-12-31", "JPY");
+    expect(gl.entries).toHaveLength(3);
+    // Entry 1: +100000
+    expect(gl.entries[0].debit).toBe(100000);
+    expect(gl.entries[0].credit).toBe(0);
+    expect(gl.entries[0].balance).toBe(100000);
+    // Entry 2: -100000
+    expect(gl.entries[1].debit).toBe(0);
+    expect(gl.entries[1].credit).toBe(100000);
+    expect(gl.entries[1].balance).toBe(0);
+    // Entry 3: +200000
+    expect(gl.entries[2].debit).toBe(200000);
+    expect(gl.entries[2].credit).toBe(0);
+    expect(gl.entries[2].balance).toBe(200000);
+  });
+
+  it("calculates opening balance from transactions before dateFrom", () => {
+    const l = buildLedgerWithPayees();
+    const gl = generateGeneralLedger(l, "Assets:AccountsReceivable", "2024-02-01", "2024-12-31", "JPY");
+    // Before Feb: +100000 - 100000 = 0
+    expect(gl.openingBalance).toBe(0);
+    expect(gl.entries).toHaveLength(1);
+    expect(gl.entries[0].balance).toBe(200000);
+    expect(gl.closingBalance).toBe(200000);
+  });
+
+  it("shows counterpart accounts", () => {
+    const l = buildLedgerWithPayees();
+    const gl = generateGeneralLedger(l, "Assets:AccountsReceivable", "2024-01-01", "2024-12-31", "JPY");
+    expect(gl.entries[0].counterpart).toBe("Income:Sales");
+    expect(gl.entries[1].counterpart).toBe("Assets:Bank");
+  });
+
+  it("totals debit and credit correctly", () => {
+    const l = buildLedgerWithPayees();
+    const gl = generateGeneralLedger(l, "Assets:AccountsReceivable", "2024-01-01", "2024-12-31", "JPY");
+    expect(gl.totalDebit).toBe(300000);
+    expect(gl.totalCredit).toBe(100000);
+  });
+
+  it("returns empty entries for account with no transactions", () => {
+    const l = buildLedgerWithPayees();
+    const gl = generateGeneralLedger(l, "Liabilities:Borrowings", "2024-01-01", "2024-12-31", "JPY");
+    expect(gl.entries).toHaveLength(0);
+    expect(gl.openingBalance).toBe(0);
+    expect(gl.closingBalance).toBe(0);
+  });
+});
+
+describe("generateSubsidiaryLedger", () => {
+  it("shows all postings for a given payee", () => {
+    const l = buildLedgerWithPayees();
+    const sl = generateSubsidiaryLedger(l, "ClientA", "2024-01-01", "2024-12-31", "JPY");
+    // 3 transactions × 2 postings each = 6
+    expect(sl.entries).toHaveLength(6);
+    expect(sl.payee).toBe("ClientA");
+  });
+
+  it("filters by date range", () => {
+    const l = buildLedgerWithPayees();
+    const sl = generateSubsidiaryLedger(l, "ClientA", "2024-01-01", "2024-01-31", "JPY");
+    // 2 transactions in Jan × 2 postings = 4
+    expect(sl.entries).toHaveLength(4);
+  });
+
+  it("totals debit and credit correctly", () => {
+    const l = buildLedgerWithPayees();
+    const sl = generateSubsidiaryLedger(l, "SupplierX", "2024-01-01", "2024-12-31", "JPY");
+    // 1 transaction: Expenses:Supplies 5000 (debit), Assets:Cash -5000 (credit)
+    expect(sl.totalDebit).toBe(5000);
+    expect(sl.totalCredit).toBe(5000);
+  });
+
+  it("returns empty for non-existent payee", () => {
+    const l = buildLedgerWithPayees();
+    const sl = generateSubsidiaryLedger(l, "Unknown", "2024-01-01", "2024-12-31", "JPY");
+    expect(sl.entries).toHaveLength(0);
+    expect(sl.totalDebit).toBe(0);
+    expect(sl.totalCredit).toBe(0);
   });
 });

@@ -12,6 +12,8 @@ import {
   generateBalanceSheet,
   generateIncomeStatement,
   generateTrialBalance,
+  generateGeneralLedger,
+  generateSubsidiaryLedger,
   BalanceSheetReport,
   IncomeStatementReport,
   TrialBalanceReport,
@@ -80,6 +82,8 @@ export function MainView(props: MainViewProps) {
     { key: "income_statement", label: t("report.incomeStatement") },
     { key: "trial_balance", label: t("report.trialBalance") },
     { key: "consumption_tax", label: t("report.consumptionTax") },
+    { key: "general_ledger", label: t("report.generalLedger") },
+    { key: "subsidiary_ledger", label: t("report.subsidiaryLedger") },
   ];
 
   return (
@@ -152,6 +156,24 @@ export function MainView(props: MainViewProps) {
               filterDateTo || today,
               currency
             )}
+            decimals={settings.decimalPlaces}
+          />
+        )}
+        {activeReport === "general_ledger" && (
+          <GeneralLedgerView
+            ledger={ledger}
+            dateFrom={filterDateFrom || "1970-01-01"}
+            dateTo={filterDateTo || today}
+            currency={currency}
+            decimals={settings.decimalPlaces}
+          />
+        )}
+        {activeReport === "subsidiary_ledger" && (
+          <SubsidiaryLedgerView
+            ledger={ledger}
+            dateFrom={filterDateFrom || "1970-01-01"}
+            dateTo={filterDateTo || today}
+            currency={currency}
             decimals={settings.decimalPlaces}
           />
         )}
@@ -457,6 +479,253 @@ function ConsumptionTaxView({ report, decimals }: { report: ConsumptionTaxReport
           {formatNum(report.netTaxPayable, decimals)} {report.currency}
         </strong>
       </div>
+    </div>
+  );
+}
+
+/** General ledger (勘定元帳) view - detail by account */
+function GeneralLedgerView({
+  ledger,
+  dateFrom,
+  dateTo,
+  currency,
+  decimals,
+}: {
+  ledger: LedgerData;
+  dateFrom: string;
+  dateTo: string;
+  currency: string;
+  decimals: number;
+}) {
+  const [selectedAccount, setSelectedAccount] = React.useState("");
+
+  // Get all accounts sorted
+  const accounts = ledger.accounts
+    .map((a) => a.name)
+    .sort((a, b) => a.localeCompare(b));
+
+  const report = selectedAccount
+    ? generateGeneralLedger(ledger, selectedAccount, dateFrom, dateTo, currency)
+    : null;
+
+  return (
+    <div className="accounting-report">
+      <h3>{t("report.generalLedger")} ({dateFrom} ~ {dateTo})</h3>
+
+      <div className="accounting-ledger-selector">
+        <select
+          value={selectedAccount}
+          onChange={(e) => setSelectedAccount(e.target.value)}
+          className="accounting-ledger-select"
+        >
+          <option value="">{t("ledger.selectAccount")}</option>
+          {accounts.map((acc) => (
+            <option key={acc} value={acc}>
+              {tAccount(acc)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {report && (
+        <div className="accounting-report-section">
+          <h4>{tAccount(report.account)}</h4>
+          <table className="accounting-table">
+            <thead>
+              <tr>
+                <th>{t("date")}</th>
+                <th>{t("ledger.counterpart")}</th>
+                <th>{t("txn.narration")}</th>
+                <th style={{ textAlign: "right" }}>{t("table.debit")}</th>
+                <th style={{ textAlign: "right" }}>{t("table.credit")}</th>
+                <th style={{ textAlign: "right" }}>{t("ledger.balance")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.openingBalance !== 0 && (
+                <tr className="accounting-ledger-opening">
+                  <td></td>
+                  <td colSpan={2}><em>{t("ledger.openingBalance")}</em></td>
+                  <td style={{ textAlign: "right" }}>
+                    {report.openingBalance > 0 ? formatNum(report.openingBalance, decimals) : ""}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    {report.openingBalance < 0 ? formatNum(-report.openingBalance, decimals) : ""}
+                  </td>
+                  <td style={{ textAlign: "right" }} className="accounting-mono">
+                    {formatNum(report.openingBalance, decimals)}
+                  </td>
+                </tr>
+              )}
+              {report.entries.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: "center", color: "#888" }}>
+                    {t("ledger.noEntries")}
+                  </td>
+                </tr>
+              )}
+              {report.entries.map((entry, i) => (
+                <tr
+                  key={i}
+                  className="accounting-ledger-row"
+                  onClick={() => setState({ editingTxnId: entry.txnId })}
+                >
+                  <td className="accounting-txn-date">{entry.date}</td>
+                  <td className="accounting-ledger-counterpart">
+                    {entry.counterpart.split(", ").map((c) => tAccount(c)).join(", ")}
+                  </td>
+                  <td>
+                    {entry.payee && <span className="accounting-txn-payee">{entry.payee} </span>}
+                    {entry.narration}
+                  </td>
+                  <td style={{ textAlign: "right" }} className="accounting-mono">
+                    {entry.debit > 0 ? formatNum(entry.debit, decimals) : ""}
+                  </td>
+                  <td style={{ textAlign: "right" }} className="accounting-mono">
+                    {entry.credit > 0 ? formatNum(entry.credit, decimals) : ""}
+                  </td>
+                  <td
+                    style={{ textAlign: "right" }}
+                    className={`accounting-mono ${entry.balance < 0 ? "accounting-negative" : ""}`}
+                  >
+                    {formatNum(entry.balance, decimals)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {report.entries.length > 0 && (
+              <tfoot>
+                <tr className="accounting-table-total">
+                  <td colSpan={3}><strong>{t("report.total")}</strong></td>
+                  <td style={{ textAlign: "right" }}>
+                    <strong>{formatNum(report.totalDebit, decimals)}</strong>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <strong>{formatNum(report.totalCredit, decimals)}</strong>
+                  </td>
+                  <td
+                    style={{ textAlign: "right" }}
+                    className={report.closingBalance < 0 ? "accounting-negative" : ""}
+                  >
+                    <strong>{formatNum(report.closingBalance, decimals)}</strong>
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Subsidiary ledger (補助元帳) view - detail by payee */
+function SubsidiaryLedgerView({
+  ledger,
+  dateFrom,
+  dateTo,
+  currency,
+  decimals,
+}: {
+  ledger: LedgerData;
+  dateFrom: string;
+  dateTo: string;
+  currency: string;
+  decimals: number;
+}) {
+  const [selectedPayee, setSelectedPayee] = React.useState("");
+
+  // Collect unique payees from all transactions
+  const payees = [...new Set(
+    ledger.transactions
+      .filter((t) => t.payee)
+      .map((t) => t.payee!)
+  )].sort();
+
+  const report = selectedPayee
+    ? generateSubsidiaryLedger(ledger, selectedPayee, dateFrom, dateTo, currency)
+    : null;
+
+  return (
+    <div className="accounting-report">
+      <h3>{t("report.subsidiaryLedger")} ({dateFrom} ~ {dateTo})</h3>
+
+      <div className="accounting-ledger-selector">
+        <select
+          value={selectedPayee}
+          onChange={(e) => setSelectedPayee(e.target.value)}
+          className="accounting-ledger-select"
+        >
+          <option value="">{t("ledger.selectPayee")}</option>
+          {payees.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {payees.length === 0 && (
+        <p style={{ color: "#888", textAlign: "center", padding: 24 }}>
+          {t("ledger.noPayees")}
+        </p>
+      )}
+
+      {report && (
+        <div className="accounting-report-section">
+          <h4>{report.payee}</h4>
+          <table className="accounting-table">
+            <thead>
+              <tr>
+                <th>{t("date")}</th>
+                <th>{t("account")}</th>
+                <th>{t("txn.narration")}</th>
+                <th style={{ textAlign: "right" }}>{t("table.debit")}</th>
+                <th style={{ textAlign: "right" }}>{t("table.credit")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.entries.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "center", color: "#888" }}>
+                    {t("ledger.noEntries")}
+                  </td>
+                </tr>
+              )}
+              {report.entries.map((entry, i) => (
+                <tr
+                  key={i}
+                  className="accounting-ledger-row"
+                  onClick={() => setState({ editingTxnId: entry.txnId })}
+                >
+                  <td className="accounting-txn-date">{entry.date}</td>
+                  <td>{tAccount(entry.account)}</td>
+                  <td>{entry.narration}</td>
+                  <td style={{ textAlign: "right" }} className="accounting-mono">
+                    {entry.debit > 0 ? formatNum(entry.debit, decimals) : ""}
+                  </td>
+                  <td style={{ textAlign: "right" }} className="accounting-mono">
+                    {entry.credit > 0 ? formatNum(entry.credit, decimals) : ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {report.entries.length > 0 && (
+              <tfoot>
+                <tr className="accounting-table-total">
+                  <td colSpan={3}><strong>{t("report.total")}</strong></td>
+                  <td style={{ textAlign: "right" }}>
+                    <strong>{formatNum(report.totalDebit, decimals)}</strong>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <strong>{formatNum(report.totalCredit, decimals)}</strong>
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
     </div>
   );
 }

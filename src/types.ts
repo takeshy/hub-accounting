@@ -146,7 +146,7 @@ export interface AccountBalance {
 }
 
 /** Report types */
-export type ReportType = "journal" | "balance_sheet" | "income_statement" | "trial_balance" | "consumption_tax";
+export type ReportType = "journal" | "balance_sheet" | "income_statement" | "trial_balance" | "consumption_tax" | "general_ledger" | "subsidiary_ledger";
 
 /** Plugin settings */
 export interface AccountingSettings {

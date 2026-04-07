@@ -226,6 +226,7 @@
   gap: 0;
   border-bottom: 1px solid #444;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .accounting-tab {
@@ -592,6 +593,48 @@
 
 .accounting-autocomplete-active .accounting-autocomplete-desc {
   color: #cbd5e1;
+}
+
+/* Ledger selector */
+.accounting-ledger-selector {
+  margin-bottom: 12px;
+}
+
+.accounting-ledger-select {
+  padding: 6px 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #e0e0e0;
+  font-size: 13px;
+  min-width: 240px;
+}
+
+.accounting-ledger-select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* Ledger table rows */
+.accounting-ledger-row {
+  cursor: pointer;
+}
+
+.accounting-ledger-row:hover {
+  background: #2a2a2a;
+}
+
+.accounting-ledger-opening {
+  color: #888;
+}
+
+.accounting-ledger-counterpart {
+  color: #aaa;
+  font-size: 12px;
+}
+
+.accounting-mono {
+  font-family: "SF Mono", "Menlo", monospace;
 }
 
 /* AI result */

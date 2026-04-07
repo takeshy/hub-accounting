@@ -4,6 +4,7 @@
 
 import { LedgerData, AccountBalance, AccountType } from "../types";
 import {
+  autoBalance,
   calculateBalances,
   getAccountType,
   getBalancesByType,
@@ -34,6 +35,52 @@ export interface IncomeStatementReport {
   totalIncome: number;
   totalExpenses: number;
   netIncome: number;
+}
+
+/** General ledger entry (one line per posting in the selected account) */
+export interface GeneralLedgerEntry {
+  date: string;
+  payee?: string;
+  narration: string;
+  counterpart: string;
+  debit: number;
+  credit: number;
+  balance: number;
+  txnId: string;
+}
+
+/** General ledger report for a single account */
+export interface GeneralLedgerReport {
+  account: string;
+  dateFrom: string;
+  dateTo: string;
+  currency: string;
+  openingBalance: number;
+  entries: GeneralLedgerEntry[];
+  closingBalance: number;
+  totalDebit: number;
+  totalCredit: number;
+}
+
+/** Subsidiary ledger entry (one line per transaction with the selected payee) */
+export interface SubsidiaryLedgerEntry {
+  date: string;
+  narration: string;
+  account: string;
+  debit: number;
+  credit: number;
+  txnId: string;
+}
+
+/** Subsidiary ledger report for a single payee */
+export interface SubsidiaryLedgerReport {
+  payee: string;
+  dateFrom: string;
+  dateTo: string;
+  currency: string;
+  entries: SubsidiaryLedgerEntry[];
+  totalDebit: number;
+  totalCredit: number;
 }
 
 /** Trial balance entry */
@@ -146,6 +193,144 @@ export function generateTrialBalance(
 
   return {
     date,
+    currency,
+    entries,
+    totalDebit,
+    totalCredit,
+  };
+}
+
+/** Generate a general ledger (勘定元帳) for a specific account */
+export function generateGeneralLedger(
+  ledger: LedgerData,
+  account: string,
+  dateFrom: string,
+  dateTo: string,
+  currency: string
+): GeneralLedgerReport {
+  // Calculate opening balance (all transactions before dateFrom)
+  const preTxns = ledger.transactions.filter(
+    (t) => t.date < dateFrom && t.postings.some((p) => p.account === account)
+  );
+  let openingBalance = 0;
+  for (const txn of preTxns) {
+    const balanced = autoBalance(txn);
+    for (const p of balanced.postings) {
+      if (p.account === account && p.amount !== null && p.currency === currency) {
+        openingBalance += p.amount;
+      }
+    }
+  }
+
+  // Get transactions in the date range that involve this account
+  const txns = ledger.transactions
+    .filter(
+      (t) =>
+        t.date >= dateFrom &&
+        t.date <= dateTo &&
+        t.postings.some((p) => p.account === account)
+    )
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+
+  const entries: GeneralLedgerEntry[] = [];
+  let runningBalance = openingBalance;
+  let totalDebit = 0;
+  let totalCredit = 0;
+
+  for (const txn of txns) {
+    const balanced = autoBalance(txn);
+    // Sum all postings for this account in this transaction
+    let amount = 0;
+    for (const p of balanced.postings) {
+      if (p.account === account && p.amount !== null && p.currency === currency) {
+        amount += p.amount;
+      }
+    }
+    if (amount === 0) continue;
+
+    // Counterpart accounts (all other accounts in this transaction)
+    const counterparts = balanced.postings
+      .filter((p) => p.account !== account)
+      .map((p) => p.account);
+    const counterpart = [...new Set(counterparts)].join(", ");
+
+    const debit = amount > 0 ? amount : 0;
+    const credit = amount < 0 ? -amount : 0;
+    runningBalance += amount;
+    totalDebit += debit;
+    totalCredit += credit;
+
+    entries.push({
+      date: txn.date,
+      payee: txn.payee,
+      narration: txn.narration,
+      counterpart,
+      debit,
+      credit,
+      balance: runningBalance,
+      txnId: txn.id,
+    });
+  }
+
+  return {
+    account,
+    dateFrom,
+    dateTo,
+    currency,
+    openingBalance,
+    entries,
+    closingBalance: runningBalance,
+    totalDebit,
+    totalCredit,
+  };
+}
+
+/** Generate a subsidiary ledger (補助元帳) for a specific payee */
+export function generateSubsidiaryLedger(
+  ledger: LedgerData,
+  payee: string,
+  dateFrom: string,
+  dateTo: string,
+  currency: string
+): SubsidiaryLedgerReport {
+  // Get transactions for this payee in the date range
+  const txns = ledger.transactions
+    .filter(
+      (t) =>
+        t.date >= dateFrom &&
+        t.date <= dateTo &&
+        t.payee === payee
+    )
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+
+  const entries: SubsidiaryLedgerEntry[] = [];
+  let totalDebit = 0;
+  let totalCredit = 0;
+
+  for (const txn of txns) {
+    const balanced = autoBalance(txn);
+    for (const p of balanced.postings) {
+      if (p.amount === null || p.currency !== currency) continue;
+      const debit = p.amount > 0 ? p.amount : 0;
+      const credit = p.amount < 0 ? -p.amount : 0;
+      totalDebit += debit;
+      totalCredit += credit;
+
+      entries.push({
+        date: txn.date,
+        narration: txn.narration,
+        account: p.account,
+        debit,
+        credit,
+        txnId: txn.id,
+      });
+    }
+  }
+
+  return {
+    payee,
+    dateFrom,
+    dateTo,
     currency,
     entries,
     totalDebit,
