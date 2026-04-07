@@ -1005,7 +1005,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
           + {t("accounts.open")}
         </button>
         <button className="accounting-btn" onClick={() => { setAiInput(""); setAiError(""); setShowAiModal(true); }}>
-          {t("ai.button")}
+          &#x2728; {t("ai.button")}
         </button>
         <button className="accounting-btn" onClick={() => setView("templates")}>
           {t("template.title")}
