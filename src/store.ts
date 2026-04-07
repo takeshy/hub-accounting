@@ -24,7 +24,7 @@ type Listener = (state: StoreState) => void;
 const initialState: StoreState = {
   ledger: null,
   fileName: "",
-  activeReport: "journal",
+  activeReport: "dashboard",
   settings: DEFAULT_SETTINGS,
   filterDateFrom: "",
   filterDateTo: "",

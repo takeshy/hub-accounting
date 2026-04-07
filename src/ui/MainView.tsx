@@ -7,6 +7,7 @@ import { t, tAccount, setLanguage } from "../i18n";
 import { useStore, setState, saveLedger as storeSaveLedger } from "../store";
 import { ReportType, LedgerData, AccountBalance } from "../types";
 import { removeTransaction, refreshErrors } from "../core/ledger";
+import { formatNum } from "../format";
 
 import {
   generateBalanceSheet,
@@ -21,6 +22,7 @@ import {
 
 import { parse } from "../core/parser";
 import { generateConsumptionTaxReport, ConsumptionTaxReport } from "../core/tax";
+import { DashboardView } from "./DashboardView";
 
 interface PluginAPI {
   storage: {
@@ -34,16 +36,6 @@ interface MainViewProps {
   fileName?: string;
   fileContent?: string;
   language?: string;
-}
-
-function formatNum(n: number, decimals: number): string {
-  if (decimals === 0 && Number.isInteger(n)) {
-    return n.toLocaleString();
-  }
-  return n.toLocaleString(undefined, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
 }
 
 export function MainView(props: MainViewProps) {
@@ -77,6 +69,7 @@ export function MainView(props: MainViewProps) {
   const today = new Date().toISOString().slice(0, 10);
 
   const tabs: { key: ReportType; label: string }[] = [
+    { key: "dashboard", label: t("report.dashboard") },
     { key: "journal", label: t("report.journal") },
     { key: "balance_sheet", label: t("report.balanceSheet") },
     { key: "income_statement", label: t("report.incomeStatement") },
@@ -124,6 +117,15 @@ export function MainView(props: MainViewProps) {
       </div>
 
       <div className="accounting-report-content">
+        {activeReport === "dashboard" && (
+          <DashboardView
+            ledger={ledger}
+            dateFrom={filterDateFrom || "1970-01-01"}
+            dateTo={filterDateTo || today}
+            currency={currency}
+            decimals={settings.decimalPlaces}
+          />
+        )}
         {activeReport === "journal" && <JournalView ledger={ledger} api={props.api} />}
         {activeReport === "balance_sheet" && (
           <BalanceSheetView

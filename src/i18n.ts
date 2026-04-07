@@ -42,6 +42,7 @@ const translations: Record<string, Record<string, string>> = {
     "txn.unbalanced": "Unbalanced",
 
     // Reports
+    "report.dashboard": "Dashboard",
     "report.journal": "Journal",
     "report.balanceSheet": "Balance Sheet",
     "report.incomeStatement": "Income Statement",
@@ -49,6 +50,12 @@ const translations: Record<string, Record<string, string>> = {
     "report.period": "Period",
     "report.total": "Total",
     "report.netIncome": "Net Income",
+
+    // Dashboard
+    "dashboard.netWorth": "Net Worth",
+    "dashboard.incomeExpenses": "Income vs Expenses",
+    "dashboard.netWorthTrend": "Net Worth Trend",
+    "dashboard.expenseBreakdown": "Expense Breakdown",
 
     // Accounts
     "accounts.open": "Open Account",
@@ -272,6 +279,7 @@ const translations: Record<string, Record<string, string>> = {
     "txn.unbalanced": "貸借不一致",
 
     // Reports
+    "report.dashboard": "ダッシュボード",
     "report.journal": "仕訳帳",
     "report.balanceSheet": "貸借対照表",
     "report.incomeStatement": "損益計算書",
@@ -279,6 +287,12 @@ const translations: Record<string, Record<string, string>> = {
     "report.period": "期間",
     "report.total": "合計",
     "report.netIncome": "当期純利益",
+
+    // Dashboard
+    "dashboard.netWorth": "純資産",
+    "dashboard.incomeExpenses": "収益 vs 費用",
+    "dashboard.netWorthTrend": "純資産推移",
+    "dashboard.expenseBreakdown": "費用内訳",
 
     // Accounts
     "accounts.open": "勘定科目を開設",

@@ -637,6 +637,152 @@
   font-family: "SF Mono", "Menlo", monospace;
 }
 
+/* Dashboard cards */
+.accounting-dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.accounting-dashboard-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.accounting-dashboard-card-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.accounting-dashboard-card-value {
+  font-size: 18px;
+  font-weight: 600;
+  font-family: "SF Mono", "Menlo", monospace;
+}
+
+.accounting-color-income { color: #6ee7b7; }
+.accounting-color-expenses { color: #fbbf24; }
+.accounting-color-assets { color: #93c5fd; }
+
+/* Charts */
+.accounting-chart-container {
+  position: relative;
+}
+
+.accounting-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.accounting-chart-tooltip {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #e0e0e0;
+  pointer-events: none;
+  z-index: 10;
+  line-height: 1.5;
+}
+
+.accounting-chart-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding: 8px 0 0;
+}
+
+.accounting-chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #aaa;
+}
+
+.accounting-chart-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Donut chart */
+.accounting-donut-container {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.accounting-donut-chart {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.accounting-donut-svg {
+  width: 200px;
+  height: 200px;
+}
+
+.accounting-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.accounting-donut-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: default;
+  transition: background 0.1s;
+}
+
+.accounting-donut-legend-row:hover,
+.accounting-donut-legend-active {
+  background: #2a2a2a;
+}
+
+.accounting-donut-legend-name {
+  color: #aaa;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accounting-donut-legend-value {
+  font-family: "SF Mono", "Menlo", monospace;
+  color: #e0e0e0;
+  white-space: nowrap;
+}
+
+.accounting-donut-legend-pct {
+  color: #888;
+  font-size: 10px;
+}
+
 /* AI result */
 .accounting-ai-result {
   margin: 6px 0 0;

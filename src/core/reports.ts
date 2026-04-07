@@ -11,6 +11,38 @@ import {
   sumBalances,
 } from "./ledger";
 
+/** Monthly income vs expenses summary */
+export interface MonthlySummary {
+  month: string;
+  income: number;
+  expenses: number;
+}
+
+/** Net worth at a point in time */
+export interface NetWorthPoint {
+  month: string;
+  assets: number;
+  liabilities: number;
+  netWorth: number;
+}
+
+/** Expense category breakdown */
+export interface ExpenseCategory {
+  account: string;
+  amount: number;
+  percentage: number;
+}
+
+/** Dashboard aggregate data */
+export interface DashboardData {
+  monthlySummary: MonthlySummary[];
+  netWorth: NetWorthPoint[];
+  expenseBreakdown: ExpenseCategory[];
+  totalIncome: number;
+  totalExpenses: number;
+  currentNetWorth: number;
+}
+
 /** Balance sheet report data */
 export interface BalanceSheetReport {
   date: string;
@@ -335,5 +367,127 @@ export function generateSubsidiaryLedger(
     entries,
     totalDebit,
     totalCredit,
+  };
+}
+
+/** Generate month strings between two dates (inclusive) */
+function monthRange(dateFrom: string, dateTo: string): string[] {
+  const months: string[] = [];
+  const [startY, startM] = dateFrom.slice(0, 7).split("-").map(Number);
+  const [endY, endM] = dateTo.slice(0, 7).split("-").map(Number);
+  let y = startY;
+  let m = startM;
+  while (y < endY || (y === endY && m <= endM)) {
+    months.push(`${y}-${String(m).padStart(2, "0")}`);
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return months;
+}
+
+/** Last day of a given month string "YYYY-MM" */
+function lastDayOfMonth(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+}
+
+/** Generate dashboard data */
+export function generateDashboardData(
+  ledger: LedgerData,
+  dateFrom: string,
+  dateTo: string,
+  currency: string
+): DashboardData {
+  // Clamp dateFrom to earliest transaction to avoid generating hundreds of empty months
+  if (ledger.transactions.length > 0) {
+    const earliest = ledger.transactions.reduce(
+      (min, t) => (t.date < min ? t.date : min),
+      ledger.transactions[0].date
+    );
+    if (dateFrom < earliest) dateFrom = earliest;
+  }
+  const months = monthRange(dateFrom, dateTo);
+
+  // --- Monthly income vs expenses ---
+  const monthlyIncome = new Map<string, number>();
+  const monthlyExpenses = new Map<string, number>();
+  for (const m of months) {
+    monthlyIncome.set(m, 0);
+    monthlyExpenses.set(m, 0);
+  }
+
+  for (const txn of ledger.transactions) {
+    if (txn.date < dateFrom || txn.date > dateTo) continue;
+    const m = txn.date.slice(0, 7);
+    if (!monthlyIncome.has(m)) continue;
+    const balanced = autoBalance(txn);
+    for (const p of balanced.postings) {
+      if (p.amount === null || p.currency !== currency) continue;
+      const type = getAccountType(p.account);
+      if (type === "Income") {
+        monthlyIncome.set(m, (monthlyIncome.get(m) || 0) + (-p.amount)); // Income is negative in beancount
+      } else if (type === "Expenses") {
+        monthlyExpenses.set(m, (monthlyExpenses.get(m) || 0) + p.amount);
+      }
+    }
+  }
+
+  const monthlySummary: MonthlySummary[] = months.map((m) => ({
+    month: m,
+    income: monthlyIncome.get(m) || 0,
+    expenses: monthlyExpenses.get(m) || 0,
+  }));
+
+  // --- Net worth trend (cumulative at end of each month) ---
+  const netWorth: NetWorthPoint[] = [];
+  for (const m of months) {
+    const endDate = lastDayOfMonth(m);
+    const balances = calculateBalances(ledger, endDate);
+    const byType = getBalancesByType(balances);
+    const assets = sumBalances(byType.Assets, currency) || 0;
+    const liabilities = -(sumBalances(byType.Liabilities, currency) || 0);
+    netWorth.push({
+      month: m,
+      assets,
+      liabilities,
+      netWorth: assets - liabilities,
+    });
+  }
+
+  // --- Expense breakdown ---
+  const expenseMap = new Map<string, number>();
+  for (const txn of ledger.transactions) {
+    if (txn.date < dateFrom || txn.date > dateTo) continue;
+    const balanced = autoBalance(txn);
+    for (const p of balanced.postings) {
+      if (p.amount === null || p.currency !== currency) continue;
+      if (getAccountType(p.account) !== "Expenses") continue;
+      expenseMap.set(p.account, (expenseMap.get(p.account) || 0) + p.amount);
+    }
+  }
+
+  const positiveExpenses = [...expenseMap.entries()].filter(([, v]) => v > 0);
+  const totalExpFromMap = positiveExpenses.reduce((s, [, v]) => s + v, 0);
+  const expenseBreakdown: ExpenseCategory[] = positiveExpenses
+    .sort((a, b) => b[1] - a[1])
+    .map(([account, amount]) => ({
+      account,
+      amount,
+      percentage: totalExpFromMap > 0 ? (amount / totalExpFromMap) * 100 : 0,
+    }));
+
+  // --- Totals ---
+  const totalIncome = monthlySummary.reduce((s, m) => s + m.income, 0);
+  const totalExpenses = monthlySummary.reduce((s, m) => s + m.expenses, 0);
+  const currentNetWorth = netWorth.length > 0 ? netWorth[netWorth.length - 1].netWorth : 0;
+
+  return {
+    monthlySummary,
+    netWorth,
+    expenseBreakdown,
+    totalIncome,
+    totalExpenses,
+    currentNetWorth,
   };
 }
