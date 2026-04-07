@@ -54,6 +54,7 @@ interface PluginAPI {
       options?: { model?: string; systemPrompt?: string },
     ): Promise<string>;
   };
+  selectFile?(fileId: string, fileName: string, mimeType?: string): void;
   language?: string;
 }
 
@@ -998,14 +999,23 @@ export function LedgerPanel(props: LedgerPanelProps) {
       </div>
 
       <div className="accounting-actions">
-        <button className="accounting-btn accounting-btn-primary" onClick={() => setView("addTransaction")}>
+        <button className="accounting-btn accounting-btn-primary" onClick={() => { setAiInput(""); setAiError(""); setShowAiModal(true); }}>
+          &#x2728; {t("ai.button")}
+        </button>
+        <button className="accounting-btn" onClick={() => {
+          const fy = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
+          setState({ activeReport: "dashboard", filterDateFrom: fy.start, filterDateTo: fy.end, filterQuery: "", filterAccount: "" });
+          if (fileIdRef.current) {
+            api.selectFile?.(fileIdRef.current, `${currentFiscalYear}.beancount`);
+          }
+        }}>
+          {t("report.dashboard")}
+        </button>
+        <button className="accounting-btn" onClick={() => setView("addTransaction")}>
           + {t("txn.new")}
         </button>
         <button className="accounting-btn" onClick={() => setView("addAccount")}>
           + {t("accounts.open")}
-        </button>
-        <button className="accounting-btn" onClick={() => { setAiInput(""); setAiError(""); setShowAiModal(true); }}>
-          &#x2728; {t("ai.button")}
         </button>
         <button className="accounting-btn" onClick={() => setView("templates")}>
           {t("template.title")}
@@ -1090,7 +1100,17 @@ export function LedgerPanel(props: LedgerPanelProps) {
       <h4>{t("accounts.list")}</h4>
       <div className="accounting-account-list">
         {ledger.accounts.map((a) => (
-          <div key={a.name} className="accounting-account-item">
+          <div
+            key={a.name}
+            className="accounting-account-item accounting-account-item-clickable"
+            onClick={() => {
+              const fy = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
+              setState({ activeReport: "general_ledger", filterAccount: a.name, filterDateFrom: fy.start, filterDateTo: fy.end, filterQuery: "" });
+              if (fileIdRef.current) {
+                api.selectFile?.(fileIdRef.current, `${currentFiscalYear}.beancount`);
+              }
+            }}
+          >
             <span className={`accounting-account-type accounting-type-${a.type.toLowerCase()}`}>
               {t(`account.${a.type.toLowerCase()}.short`)}
             </span>

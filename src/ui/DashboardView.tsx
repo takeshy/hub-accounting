@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { t, tAccount } from "../i18n";
-import { formatNum } from "../format";
+import { formatNum, currencyLabel } from "../format";
 import { LedgerData } from "../types";
 import {
   generateDashboardData,
@@ -45,25 +45,25 @@ export function DashboardView({ ledger, dateFrom, dateTo, currency, decimals }: 
         <div className="accounting-dashboard-card">
           <span className="accounting-dashboard-card-label">{t("account.income")}</span>
           <span className="accounting-dashboard-card-value accounting-color-income">
-            {formatNum(data.totalIncome, decimals)} {currency}
+            {formatNum(data.totalIncome, decimals)} {currencyLabel(currency)}
           </span>
         </div>
         <div className="accounting-dashboard-card">
           <span className="accounting-dashboard-card-label">{t("account.expenses")}</span>
           <span className="accounting-dashboard-card-value accounting-color-expenses">
-            {formatNum(data.totalExpenses, decimals)} {currency}
+            {formatNum(data.totalExpenses, decimals)} {currencyLabel(currency)}
           </span>
         </div>
         <div className="accounting-dashboard-card">
           <span className="accounting-dashboard-card-label">{t("report.netIncome")}</span>
           <span className={`accounting-dashboard-card-value ${netIncome < 0 ? "accounting-negative" : "accounting-color-income"}`}>
-            {formatNum(netIncome, decimals)} {currency}
+            {formatNum(netIncome, decimals)} {currencyLabel(currency)}
           </span>
         </div>
         <div className="accounting-dashboard-card">
           <span className="accounting-dashboard-card-label">{t("dashboard.netWorth")}</span>
           <span className={`accounting-dashboard-card-value ${data.currentNetWorth < 0 ? "accounting-negative" : "accounting-color-assets"}`}>
-            {formatNum(data.currentNetWorth, decimals)} {currency}
+            {formatNum(data.currentNetWorth, decimals)} {currencyLabel(currency)}
           </span>
         </div>
       </div>
@@ -195,7 +195,7 @@ function BarChart({
           <strong>{data[hover.idx].month}</strong>
           <br />
           {hover.type === "income" ? t("account.income") : t("account.expenses")}:{" "}
-          {formatNum(hover.type === "income" ? data[hover.idx].income : data[hover.idx].expenses, decimals)} {currency}
+          {formatNum(hover.type === "income" ? data[hover.idx].income : data[hover.idx].expenses, decimals)} {currencyLabel(currency)}
         </div>
       )}
 
@@ -321,7 +321,7 @@ function LineChart({
         <div className="accounting-chart-tooltip">
           <strong>{data[hoverIdx].month}</strong>
           <br />
-          {t("dashboard.netWorth")}: {formatNum(data[hoverIdx].netWorth, decimals)} {currency}
+          {t("dashboard.netWorth")}: {formatNum(data[hoverIdx].netWorth, decimals)} {currencyLabel(currency)}
         </div>
       )}
     </div>
@@ -415,7 +415,7 @@ function DonutChart({
           <div className="accounting-chart-tooltip">
             <strong>{tAccount(data[hoverIdx].account)}</strong>
             <br />
-            {formatNum(data[hoverIdx].amount, decimals)} {currency} ({data[hoverIdx].percentage.toFixed(1)}%)
+            {formatNum(data[hoverIdx].amount, decimals)} {currencyLabel(currency)} ({data[hoverIdx].percentage.toFixed(1)}%)
           </div>
         )}
       </div>

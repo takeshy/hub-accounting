@@ -7,7 +7,7 @@ import { t, tAccount, setLanguage } from "../i18n";
 import { useStore, setState, saveLedger as storeSaveLedger } from "../store";
 import { ReportType, LedgerData, AccountBalance } from "../types";
 import { removeTransaction, refreshErrors } from "../core/ledger";
-import { formatNum } from "../format";
+import { formatNum, currencyLabel } from "../format";
 
 import {
   generateBalanceSheet,
@@ -168,15 +168,22 @@ export function MainView(props: MainViewProps) {
             decimals={settings.decimalPlaces}
           />
         )}
-        {activeReport === "general_ledger" && (
-          <GeneralLedgerView
-            ledger={ledger}
-            dateFrom={filterDateFrom || "1970-01-01"}
-            dateTo={filterDateTo || today}
-            currency={currency}
-            decimals={settings.decimalPlaces}
-          />
-        )}
+        {activeReport === "general_ledger" && (() => {
+          const fy = getFiscalYearRange(
+            getFiscalYear(today, settings.fiscalYearStartMonth),
+            settings.fiscalYearStartMonth
+          );
+          return (
+            <GeneralLedgerView
+              ledger={ledger}
+              dateFrom={filterDateFrom || fy.start}
+              dateTo={filterDateTo || fy.end}
+              currency={currency}
+              decimals={settings.decimalPlaces}
+              initialAccount={filterAccount}
+            />
+          );
+        })()}
         {activeReport === "subsidiary_ledger" && (
           <SubsidiaryLedgerView
             ledger={ledger}
@@ -268,7 +275,7 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
                 <span className="accounting-posting-account">{tAccount(p.account)}</span>
                 <span className={`accounting-posting-amount ${(p.amount || 0) < 0 ? "accounting-negative" : ""}`}>
                   {p.amount !== null ? formatNum(p.amount, settings.decimalPlaces) : ""}{" "}
-                  {p.currency}
+                  {currencyLabel(p.currency)}
                   {p.taxCategory && (
                     <span className="accounting-tax-badge">{t(`tax.${p.taxCategory}`)}</span>
                   )}
@@ -296,28 +303,28 @@ function BalanceSheetView({ report, decimals }: { report: BalanceSheetReport; de
       <h3>{t("report.balanceSheet")} ({report.date})</h3>
       <div className="accounting-report-section">
         <h4>{t("account.assets")}</h4>
-        <AccountBalanceList balances={report.assets} currency={report.currency} decimals={decimals} />
+        <AccountBalanceList balances={report.assets} currency={currencyLabel(report.currency)} decimals={decimals} />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
-          <strong>{formatNum(report.totalAssets, decimals)} {report.currency}</strong>
+          <strong>{formatNum(report.totalAssets, decimals)} {currencyLabel(report.currency)}</strong>
         </div>
       </div>
 
       <div className="accounting-report-section">
         <h4>{t("account.liabilities")}</h4>
-        <AccountBalanceList balances={report.liabilities} currency={report.currency} decimals={decimals} negate />
+        <AccountBalanceList balances={report.liabilities} currency={currencyLabel(report.currency)} decimals={decimals} negate />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
-          <strong>{formatNum(report.totalLiabilities, decimals)} {report.currency}</strong>
+          <strong>{formatNum(report.totalLiabilities, decimals)} {currencyLabel(report.currency)}</strong>
         </div>
       </div>
 
       <div className="accounting-report-section">
         <h4>{t("account.equity")}</h4>
-        <AccountBalanceList balances={report.equity} currency={report.currency} decimals={decimals} negate />
+        <AccountBalanceList balances={report.equity} currency={currencyLabel(report.currency)} decimals={decimals} negate />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
-          <strong>{formatNum(report.totalEquity, decimals)} {report.currency}</strong>
+          <strong>{formatNum(report.totalEquity, decimals)} {currencyLabel(report.currency)}</strong>
         </div>
       </div>
     </div>
@@ -331,26 +338,26 @@ function IncomeStatementView({ report, decimals }: { report: IncomeStatementRepo
       <h3>{t("report.incomeStatement")} ({report.dateFrom} ~ {report.dateTo})</h3>
       <div className="accounting-report-section">
         <h4>{t("account.income")}</h4>
-        <AccountBalanceList balances={report.income} currency={report.currency} decimals={decimals} negate />
+        <AccountBalanceList balances={report.income} currency={currencyLabel(report.currency)} decimals={decimals} negate />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
-          <strong>{formatNum(report.totalIncome, decimals)} {report.currency}</strong>
+          <strong>{formatNum(report.totalIncome, decimals)} {currencyLabel(report.currency)}</strong>
         </div>
       </div>
 
       <div className="accounting-report-section">
         <h4>{t("account.expenses")}</h4>
-        <AccountBalanceList balances={report.expenses} currency={report.currency} decimals={decimals} />
+        <AccountBalanceList balances={report.expenses} currency={currencyLabel(report.currency)} decimals={decimals} />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
-          <strong>{formatNum(report.totalExpenses, decimals)} {report.currency}</strong>
+          <strong>{formatNum(report.totalExpenses, decimals)} {currencyLabel(report.currency)}</strong>
         </div>
       </div>
 
       <div className="accounting-report-grand-total">
         <strong>{t("report.netIncome")}</strong>
         <strong className={report.netIncome < 0 ? "accounting-negative" : ""}>
-          {formatNum(report.netIncome, decimals)} {report.currency}
+          {formatNum(report.netIncome, decimals)} {currencyLabel(report.currency)}
         </strong>
       </div>
     </div>
@@ -420,7 +427,7 @@ function AccountBalanceList({
           <div key={ab.account} className="accounting-balance-row">
             <span className="accounting-balance-account">{tAccount(ab.account)}</span>
             <span className={`accounting-balance-amount ${display < 0 ? "accounting-negative" : ""}`}>
-              {formatNum(display, decimals)} {currency}
+              {formatNum(display, decimals)} {currencyLabel(currency)}
             </span>
           </div>
         );
@@ -485,7 +492,7 @@ function ConsumptionTaxView({ report, decimals }: { report: ConsumptionTaxReport
       <div className="accounting-report-grand-total">
         <strong>{t("tax.netPayable")}</strong>
         <strong className={report.netTaxPayable < 0 ? "accounting-negative" : ""}>
-          {formatNum(report.netTaxPayable, decimals)} {report.currency}
+          {formatNum(report.netTaxPayable, decimals)} {currencyLabel(report.currency)}
         </strong>
       </div>
     </div>
@@ -499,14 +506,20 @@ function GeneralLedgerView({
   dateTo,
   currency,
   decimals,
+  initialAccount,
 }: {
   ledger: LedgerData;
   dateFrom: string;
   dateTo: string;
   currency: string;
   decimals: number;
+  initialAccount?: string;
 }) {
-  const [selectedAccount, setSelectedAccount] = React.useState("");
+  const [selectedAccount, setSelectedAccount] = React.useState(initialAccount || "");
+
+  React.useEffect(() => {
+    if (initialAccount) setSelectedAccount(initialAccount);
+  }, [initialAccount]);
 
   // Get all accounts sorted
   const accounts = ledger.accounts

@@ -172,6 +172,10 @@
   border-radius: 4px;
 }
 
+.accounting-account-item-clickable {
+  cursor: pointer;
+}
+
 .accounting-account-item:hover {
   background: #2a2a2a;
 }
