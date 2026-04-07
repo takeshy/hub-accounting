@@ -199,8 +199,12 @@ const translations: Record<string, Record<string, string>> = {
     "template.resetConfirm": "Reset all templates to defaults? Custom templates will be lost.",
 
     // AI input
-    "ai.placeholder": "Type / for templates...",
-    "ai.loading": "Processing...",
+    "ai.button": "AI Input",
+    "ai.title": "AI Input",
+    "ai.hint": "Type / for templates, or describe a transaction in plain text.",
+    "ai.placeholder": "/template or free text...",
+    "ai.submit": "Generate",
+    "ai.loading": "Analyzing...",
     "ai.noApi": "AI is not available.",
 
     // Placeholder
@@ -423,8 +427,12 @@ const translations: Record<string, Record<string, string>> = {
     "template.resetConfirm": "すべてのテンプレートを初期値に戻しますか？カスタムテンプレートは失われます。",
 
     // AI input
-    "ai.placeholder": "/ でテンプレート入力...",
-    "ai.loading": "処理中...",
+    "ai.button": "AI入力",
+    "ai.title": "AI入力",
+    "ai.hint": "/ でテンプレート選択、または取引内容を自由に入力してください。",
+    "ai.placeholder": "/テンプレート名 または自由入力...",
+    "ai.submit": "生成",
+    "ai.loading": "解析中...",
     "ai.noApi": "AIが利用できません。",
 
     // Placeholder

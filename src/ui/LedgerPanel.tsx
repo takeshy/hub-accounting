@@ -33,7 +33,8 @@ import { exportFreeeCSV } from "../core/csv";
 import { exportToGoogleSheets, SheetsAPI } from "../core/sheets";
 import { getFiscalYear, getFiscalYearFileName, getFiscalYearRange, carryForward } from "../core/fiscal";
 import { CsvImportDialog } from "./CsvImportDialog";
-import { getDefaultTemplates, applyTemplate } from "../core/templates";
+import { getDefaultTemplates, buildPostings, parseArgs } from "../core/templates";
+import { autoBalance } from "../core/ledger";
 
 interface PluginAPI {
   storage: {
@@ -85,10 +86,10 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [showAllAccounts, setShowAllAccounts] = React.useState(false);
   const [showImport, setShowImport] = React.useState(false);
 
-  // AI input state
-  const [showAiInput, setShowAiInput] = React.useState(false);
+  // AI modal state
+  const [showAiModal, setShowAiModal] = React.useState(false);
   const [aiInput, setAiInput] = React.useState("");
-  const [aiResult, setAiResult] = React.useState("");
+  const [aiError, setAiError] = React.useState("");
   const [aiLoading, setAiLoading] = React.useState(false);
   const [acIndex, setAcIndex] = React.useState(0);
   const aiInputRef = React.useRef<HTMLInputElement>(null);
@@ -577,7 +578,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
     });
   }
 
-  // --- AI input with / autocomplete ---
+  // --- AI modal with / autocomplete ---
   const acItems = React.useMemo(() => {
     if (!aiInput.startsWith("/")) return [];
     const query = aiInput.slice(1).split(/\s/)[0].toLowerCase();
@@ -593,7 +594,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
   function handleAiInputChange(value: string) {
     setAiInput(value);
     setAcIndex(0);
-    setAiResult("");
+    setAiError("");
   }
 
   function handleAcSelect(tmpl: JournalTemplate) {
@@ -625,6 +626,27 @@ export function LedgerPanel(props: LedgerPanelProps) {
     }
   }
 
+  /** Pre-fill the transaction form and switch to edit view. */
+  function prefillForm(
+    date: string,
+    payee: string,
+    narration: string,
+    debits: PostingEntry[],
+    credits: PostingEntry[],
+  ) {
+    setTxnDate(date);
+    setTxnPayee(payee);
+    setTxnNarration(narration);
+    setTxnFlag("*");
+    setDebitEntries(debits.length > 0 ? debits : [emptyEntry()]);
+    setCreditEntries(credits.length > 0 ? credits : [emptyEntry()]);
+    setEditingId(null);
+    setShowAiModal(false);
+    setAiInput("");
+    setAiError("");
+    setView("addTransaction");
+  }
+
   async function handleAiSubmit() {
     const input = aiInput.trim();
     if (!input || !ledger) return;
@@ -634,59 +656,68 @@ export function LedgerPanel(props: LedgerPanelProps) {
     if (slashMatch) {
       const cmdName = slashMatch[1];
       const args = slashMatch[2];
-      const tmpl = store.templates.find((t) => t.name === cmdName);
-      if (!tmpl) {
-        setAiResult(t("template.error.deleted"));
-        return;
-      }
-      setAiLoading(true);
-      try {
-        const { result, ledger: newLedger } = applyTemplate(tmpl, args, {
-          ledger,
-          settings,
-          onUpdate: saveLedger,
-        });
-        if (newLedger) {
-          setState({ ledger: newLedger });
-          await saveLedger(newLedger);
+      const tmpl = store.templates.find((tt) => tt.name === cmdName);
+      if (!tmpl) { setAiError(t("template.error.deleted")); return; }
+      const parsed = parseArgs(args);
+      if (!parsed) { setAiError(`${t("template.error.usage")}\n/${tmpl.name} {${t("amount")}} [${t("txn.narration")}]`); return; }
+
+      const postings = buildPostings(tmpl.postings, parsed.amount, settings.defaultCurrency, settings.decimalPlaces);
+      const tmp = autoBalance({ id: "__tmp__", date: "", flag: "*", narration: "", postings, tags: [], links: [] });
+      const debits: PostingEntry[] = [];
+      const credits: PostingEntry[] = [];
+      for (const p of tmp.postings) {
+        if (p.amount !== null && p.amount < 0) {
+          credits.push({ account: p.account, amount: Math.abs(p.amount), taxCategory: p.taxCategory });
+        } else {
+          debits.push({ account: p.account, amount: p.amount, taxCategory: p.taxCategory });
         }
-        setAiResult(result);
-        setAiInput("");
-      } finally {
-        setAiLoading(false);
       }
+      const today = new Date().toISOString().slice(0, 10);
+      prefillForm(today, tmpl.payee || "", parsed.narration || tmpl.narration, debits, credits);
       return;
     }
 
-    // Free-text: send to AI (if gemini API available)
-    if (api.gemini) {
-      setAiLoading(true);
-      try {
-        const gemini = api.gemini;
-        const accountList = ledger.accounts.map((a) => a.name).join(", ");
-        const systemPrompt = [
-          "You are an accounting assistant. The user has a Beancount ledger.",
-          `Available accounts: ${accountList}`,
-          `Default currency: ${settings.defaultCurrency}`,
-          "When the user describes a transaction, output ONLY a Beancount transaction entry.",
-          "Format: YYYY-MM-DD * \"Payee\" \"Narration\"\\n  Account1  AMOUNT CURRENCY\\n  Account2  AMOUNT CURRENCY",
-          "Do not include any explanation, only the transaction.",
-        ].join("\n");
-        const result = await gemini.chat(
-          [{ role: "user", content: input }],
-          { systemPrompt },
-        );
-        setAiResult(result);
-        setAiInput("");
-      } catch (err) {
-        setAiResult(`Error: ${err instanceof Error ? err.message : String(err)}`);
-      } finally {
-        setAiLoading(false);
-      }
-      return;
-    }
+    // Free-text: send to AI
+    if (!api.gemini) { setAiError(t("ai.noApi")); return; }
 
-    setAiResult(t("ai.noApi"));
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const model = api.sheets ? "gemini-3.1-flash-lite" : "gemma-4";
+      const accountList = ledger.accounts.map((a) => `${a.name} (${tAccount(a.name)})`).join(", ");
+      const today = new Date().toISOString().slice(0, 10);
+      const systemPrompt = [
+        "You are a Japanese accounting assistant. Parse the user's description into a double-entry journal entry.",
+        `Available accounts: ${accountList}`,
+        `Default currency: ${settings.defaultCurrency}`,
+        `Today's date: ${today}`,
+        "Tax categories: taxable_10 (課税10%), taxable_8 (課税8%軽減), exempt (非課税), non_taxable (不課税), tax_free (免税). Use null if not applicable.",
+        "Return ONLY a JSON object (no markdown, no explanation):",
+        '{"date":"YYYY-MM-DD","payee":"","narration":"description","debit":[{"account":"Account:Name","amount":1000,"taxCategory":null}],"credit":[{"account":"Account:Name","amount":1000,"taxCategory":null}]}',
+      ].join("\n");
+      const raw = await api.gemini.chat(
+        [{ role: "user", content: input }],
+        { model, systemPrompt },
+      );
+      // Extract JSON from response (strip markdown fences if present)
+      const jsonStr = raw.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
+      const data = JSON.parse(jsonStr) as {
+        date?: string; payee?: string; narration?: string;
+        debit?: Array<{ account: string; amount: number; taxCategory?: string | null }>;
+        credit?: Array<{ account: string; amount: number; taxCategory?: string | null }>;
+      };
+      const debits: PostingEntry[] = (data.debit || []).map((d) => ({
+        account: d.account, amount: d.amount, taxCategory: (d.taxCategory || undefined) as TaxCategory | undefined,
+      }));
+      const credits: PostingEntry[] = (data.credit || []).map((c) => ({
+        account: c.account, amount: c.amount, taxCategory: (c.taxCategory || undefined) as TaxCategory | undefined,
+      }));
+      prefillForm(data.date || today, data.payee || "", data.narration || input, debits, credits);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   // --- Render ---
@@ -973,48 +1004,67 @@ export function LedgerPanel(props: LedgerPanelProps) {
         <button className="accounting-btn" onClick={() => setView("addAccount")}>
           + {t("accounts.open")}
         </button>
+        <button className="accounting-btn" onClick={() => { setAiInput(""); setAiError(""); setShowAiModal(true); }}>
+          {t("ai.button")}
+        </button>
         <button className="accounting-btn" onClick={() => setView("templates")}>
           {t("template.title")}
         </button>
       </div>
 
-      {/* AI Input area */}
-      <div className="accounting-ai-input" style={{ marginTop: 8 }}>
-        <div style={{ position: "relative" }}>
-          <input
-            ref={aiInputRef}
-            type="text"
-            value={aiInput}
-            onChange={(e) => handleAiInputChange(e.target.value)}
-            onKeyDown={handleAiKeyDown}
-            onFocus={() => setShowAiInput(true)}
-            placeholder={t("ai.placeholder")}
-            disabled={aiLoading}
-            style={{ width: "100%", boxSizing: "border-box" }}
-          />
-          {showAc && (
-            <div className="accounting-autocomplete">
-              {acItems.map((tmpl, i) => (
-                <div
-                  key={tmpl.id}
-                  className={`accounting-autocomplete-item${i === acIndex ? " accounting-autocomplete-active" : ""}`}
-                  onMouseDown={(e) => { e.preventDefault(); handleAcSelect(tmpl); }}
-                  onMouseEnter={() => setAcIndex(i)}
-                >
-                  <span className="accounting-autocomplete-name">/{tmpl.name}</span>
-                  <span className="accounting-autocomplete-desc">{tmpl.description}</span>
-                </div>
-              ))}
+      {showAiModal && (
+        <div className="accounting-dialog-overlay" onClick={() => setShowAiModal(false)}>
+          <div className="accounting-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <div className="accounting-dialog-header">
+              <h3>{t("ai.title")}</h3>
+              <button className="accounting-btn accounting-btn-sm" onClick={() => setShowAiModal(false)}>×</button>
             </div>
-          )}
+            <div className="accounting-dialog-body">
+              <p style={{ fontSize: 12, color: "#888", margin: "0 0 8px" }}>{t("ai.hint")}</p>
+              <div style={{ position: "relative" }}>
+                <input
+                  ref={aiInputRef}
+                  type="text"
+                  value={aiInput}
+                  onChange={(e) => handleAiInputChange(e.target.value)}
+                  onKeyDown={handleAiKeyDown}
+                  placeholder={t("ai.placeholder")}
+                  disabled={aiLoading}
+                  autoFocus
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid #444", borderRadius: 4, background: "#1e1e1e", color: "#e0e0e0", fontSize: 14 }}
+                />
+                {showAc && (
+                  <div className="accounting-autocomplete">
+                    {acItems.map((tmpl, i) => (
+                      <div
+                        key={tmpl.id}
+                        className={`accounting-autocomplete-item${i === acIndex ? " accounting-autocomplete-active" : ""}`}
+                        onMouseDown={(e) => { e.preventDefault(); handleAcSelect(tmpl); }}
+                        onMouseEnter={() => setAcIndex(i)}
+                      >
+                        <span className="accounting-autocomplete-name">/{tmpl.name}</span>
+                        <span className="accounting-autocomplete-desc">{tmpl.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {aiLoading && (
+                <div style={{ fontSize: 12, color: "#888", marginTop: 8 }}>{t("ai.loading")}</div>
+              )}
+              {aiError && (
+                <pre className="accounting-ai-result" style={{ color: "#fca5a5" }}>{aiError}</pre>
+              )}
+            </div>
+            <div className="accounting-dialog-footer">
+              <button className="accounting-btn" onClick={() => setShowAiModal(false)}>{t("cancel")}</button>
+              <button className="accounting-btn accounting-btn-primary" onClick={handleAiSubmit} disabled={aiLoading || !aiInput.trim()}>
+                {t("ai.submit")}
+              </button>
+            </div>
+          </div>
         </div>
-        {aiLoading && (
-          <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>{t("ai.loading")}</div>
-        )}
-        {aiResult && (
-          <pre className="accounting-ai-result">{aiResult}</pre>
-        )}
-      </div>
+      )}
 
       <div className="accounting-stats">
         <div className="accounting-stat">
