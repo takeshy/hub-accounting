@@ -5,49 +5,7 @@
 
 import { LedgerData, TaxCategory, Posting } from "../types";
 import { autoBalance, getAccountType } from "./ledger";
-
-/** Map TaxCategory + account type to freee tax category name */
-function freeeTaxLabel(category: TaxCategory | undefined, accountType: string | null): string {
-  if (!category) return "対象外";
-  switch (category) {
-    case "taxable_10":
-      return accountType === "Income" ? "課税売上10%" : "課対仕入10%";
-    case "taxable_8":
-      return accountType === "Income" ? "課税売上8%(軽)" : "課対仕入8%(軽)";
-    case "exempt":
-      return accountType === "Income" ? "非課売上" : "非課仕入";
-    case "non_taxable":
-      return "対象外";
-    case "tax_free":
-      return "不課税";
-    default:
-      return "対象外";
-  }
-}
-
-/** Translate account name to Japanese display name using i18n function */
-function translateAccount(accountName: string, i18nFn: (key: string) => string): string {
-  const translated = i18nFn(`account.${accountName}`);
-  // If no translation found, i18n returns the key itself
-  if (translated === `account.${accountName}`) {
-    // Fall back to last component of account name
-    const parts = accountName.split(":");
-    return parts[parts.length - 1];
-  }
-  return translated;
-}
-
-/** Split account name into main account and sub-account */
-function splitAccount(accountName: string, i18nFn: (key: string) => string): [string, string] {
-  const parts = accountName.split(":");
-  if (parts.length <= 2) {
-    return [translateAccount(accountName, i18nFn), ""];
-  }
-  // Main account = Type:First, sub = rest
-  const mainName = `${parts[0]}:${parts[1]}`;
-  const subName = parts.slice(2).join(":");
-  return [translateAccount(mainName, i18nFn), subName];
-}
+import { taxLabel, splitAccount } from "./account-utils";
 
 /** Escape a CSV field */
 function csvField(value: string): string {
@@ -105,8 +63,8 @@ export function exportFreeeCSV(
       const cAccType = c ? getAccountType(c.account) : null;
       const [dMain, dSub] = d ? splitAccount(d.account, i18nFn) : ["", ""];
       const [cMain, cSub] = c ? splitAccount(c.account, i18nFn) : ["", ""];
-      const dTax = d ? freeeTaxLabel(d.taxCategory, dAccType) : "";
-      const cTax = c ? freeeTaxLabel(c.taxCategory, cAccType) : "";
+      const dTax = d ? taxLabel(d.taxCategory, dAccType) : "";
+      const cTax = c ? taxLabel(c.taxCategory, cAccType) : "";
       const dAmt = d ? Math.abs(d.amount!) : 0;
       const cAmt = c ? Math.abs(c.amount!) : 0;
 

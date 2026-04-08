@@ -226,7 +226,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
     setState({ ledger: newLedger, fileName: `${year}.beancount` });
   }
 
-  async function saveLedger(l: LedgerData) {
+  const saveLedger = React.useCallback(async (l: LedgerData) => {
     const text = format(l, settings.decimalPlaces);
     if (fileIdRef.current) {
       await api.drive.updateFile(fileIdRef.current, text);
@@ -234,10 +234,10 @@ export function LedgerPanel(props: LedgerPanelProps) {
       const file = await api.drive.createFile("ledger.beancount", text);
       fileIdRef.current = file.id;
     }
-  }
+  }, [settings.decimalPlaces, api.drive]);
 
   // Register save function so MainView can also trigger saves
-  React.useEffect(() => { registerSaveFn(saveLedger); }, []);
+  React.useEffect(() => { registerSaveFn(saveLedger); }, [saveLedger]);
 
   /** Check if an account is Income or Expenses (tax-relevant) */
   function isTaxRelevantAccount(accountName: string): boolean {
@@ -317,7 +317,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
       links: [],
     };
 
-    if (!isBalanced(txn as Transaction)) {
+    if (!isBalanced(txn)) {
       alert(t("error.unbalanced"));
       return;
     }

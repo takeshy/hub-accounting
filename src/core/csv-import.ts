@@ -3,6 +3,7 @@
  */
 
 import { Transaction, Posting, LedgerData } from "../types";
+import { uid } from "../format";
 import { refreshErrors } from "./ledger";
 
 /** Bank CSV format preset */
@@ -238,11 +239,6 @@ export function rowToTransaction(
     tags: ["csv-import"],
     links: [],
   };
-}
-
-/** Generate a unique id */
-function uid(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 /** Import enabled rows as transactions into a ledger */

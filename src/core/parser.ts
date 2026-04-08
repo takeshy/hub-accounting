@@ -18,11 +18,7 @@ import {
   TaxCategory,
   TAX_CATEGORIES,
 } from "../types";
-
-/** Generate a simple unique id */
-function uid(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
+import { uid } from "../format";
 
 /** Extract account type from full account name */
 function accountType(name: string): AccountType | null {

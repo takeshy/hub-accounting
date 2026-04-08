@@ -3,6 +3,7 @@
  */
 
 import { LedgerData, Account, Directive } from "../types";
+import { uid } from "../format";
 import {
   calculateBalances,
   getBalancesByType,
@@ -96,7 +97,6 @@ export function carryForward(
   ];
 
   // Build opening balance transactions
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const transactions: LedgerData["transactions"] = [];
 
   // Carry forward each Asset/Liability/Equity account balance

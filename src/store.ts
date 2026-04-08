@@ -66,11 +66,5 @@ export async function saveLedger(ledger: LedgerData): Promise<void> {
 
 /** React hook - subscribes to store changes. */
 export function useStore(): StoreState {
-  const [snap, setSnap] = React.useState(getState);
-  React.useEffect(() => {
-    const unsub = subscribe(setSnap);
-    setSnap(getState());
-    return unsub;
-  }, []);
-  return snap;
+  return React.useSyncExternalStore(subscribe, getState, getState);
 }

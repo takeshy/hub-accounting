@@ -229,6 +229,7 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
   txns.sort((a, b) => b.date.localeCompare(a.date));
 
   async function handleDelete(id: string) {
+    if (!confirm(t("delete") + "?")) return;
     const newLedger = removeTransaction(ledger, id);
     setState({ ledger: newLedger });
     try {
@@ -303,7 +304,7 @@ function BalanceSheetView({ report, decimals }: { report: BalanceSheetReport; de
       <h3>{t("report.balanceSheet")} ({report.date})</h3>
       <div className="accounting-report-section">
         <h4>{t("account.assets")}</h4>
-        <AccountBalanceList balances={report.assets} currency={currencyLabel(report.currency)} decimals={decimals} />
+        <AccountBalanceList balances={report.assets} currencyCode={report.currency} decimals={decimals} />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
           <strong>{formatNum(report.totalAssets, decimals)} {currencyLabel(report.currency)}</strong>
@@ -312,7 +313,7 @@ function BalanceSheetView({ report, decimals }: { report: BalanceSheetReport; de
 
       <div className="accounting-report-section">
         <h4>{t("account.liabilities")}</h4>
-        <AccountBalanceList balances={report.liabilities} currency={currencyLabel(report.currency)} decimals={decimals} negate />
+        <AccountBalanceList balances={report.liabilities} currencyCode={report.currency} decimals={decimals} negate />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
           <strong>{formatNum(report.totalLiabilities, decimals)} {currencyLabel(report.currency)}</strong>
@@ -321,7 +322,7 @@ function BalanceSheetView({ report, decimals }: { report: BalanceSheetReport; de
 
       <div className="accounting-report-section">
         <h4>{t("account.equity")}</h4>
-        <AccountBalanceList balances={report.equity} currency={currencyLabel(report.currency)} decimals={decimals} negate />
+        <AccountBalanceList balances={report.equity} currencyCode={report.currency} decimals={decimals} negate />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
           <strong>{formatNum(report.totalEquity, decimals)} {currencyLabel(report.currency)}</strong>
@@ -338,7 +339,7 @@ function IncomeStatementView({ report, decimals }: { report: IncomeStatementRepo
       <h3>{t("report.incomeStatement")} ({report.dateFrom} ~ {report.dateTo})</h3>
       <div className="accounting-report-section">
         <h4>{t("account.income")}</h4>
-        <AccountBalanceList balances={report.income} currency={currencyLabel(report.currency)} decimals={decimals} negate />
+        <AccountBalanceList balances={report.income} currencyCode={report.currency} decimals={decimals} negate />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
           <strong>{formatNum(report.totalIncome, decimals)} {currencyLabel(report.currency)}</strong>
@@ -347,7 +348,7 @@ function IncomeStatementView({ report, decimals }: { report: IncomeStatementRepo
 
       <div className="accounting-report-section">
         <h4>{t("account.expenses")}</h4>
-        <AccountBalanceList balances={report.expenses} currency={currencyLabel(report.currency)} decimals={decimals} />
+        <AccountBalanceList balances={report.expenses} currencyCode={report.currency} decimals={decimals} />
         <div className="accounting-report-total">
           <strong>{t("report.total")}</strong>
           <strong>{formatNum(report.totalExpenses, decimals)} {currencyLabel(report.currency)}</strong>
@@ -409,25 +410,25 @@ function TrialBalanceView({ report, decimals }: { report: TrialBalanceReport; de
 /** Shared component for account balance lists */
 function AccountBalanceList({
   balances,
-  currency,
+  currencyCode,
   decimals,
   negate,
 }: {
   balances: AccountBalance[];
-  currency: string;
+  currencyCode: string;
   decimals: number;
   negate?: boolean;
 }) {
   return (
     <div className="accounting-balance-list">
       {balances.map((ab) => {
-        const amount = ab.balances[currency] || 0;
+        const amount = ab.balances[currencyCode] || 0;
         const display = negate ? -amount : amount;
         return (
           <div key={ab.account} className="accounting-balance-row">
             <span className="accounting-balance-account">{tAccount(ab.account)}</span>
             <span className={`accounting-balance-amount ${display < 0 ? "accounting-negative" : ""}`}>
-              {formatNum(display, decimals)} {currencyLabel(currency)}
+              {formatNum(display, decimals)} {currencyLabel(currencyCode)}
             </span>
           </div>
         );

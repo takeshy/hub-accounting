@@ -14,11 +14,7 @@ import {
   Directive,
   LedgerTemplate,
 } from "../types";
-
-/** Generate a unique id */
-function uid(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
+import { uid } from "../format";
 
 /** Extract account type from full account name */
 export function getAccountType(name: string): AccountType | null {
@@ -27,7 +23,7 @@ export function getAccountType(name: string): AccountType | null {
 }
 
 /** Check if a transaction is balanced (sum of postings ≈ 0) */
-export function isBalanced(txn: Transaction, tolerance: number = 0.005): boolean {
+export function isBalanced(txn: Pick<Transaction, "postings">, tolerance: number = 0.005): boolean {
   // Group by currency
   const sums = new Map<string, number>();
   let nullCount = 0;
