@@ -1,6 +1,6 @@
 {
   "name": "hub-accounting",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Double-entry bookkeeping plugin for GemiHub - Beancount-compatible plain-text accounting",
   "main": "main.js",
   "scripts": {
