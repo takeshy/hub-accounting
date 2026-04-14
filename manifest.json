@@ -1,9 +1,10 @@
 {
   "id": "accounting",
   "name": "Accounting - Double-Entry Bookkeeping",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "minAppVersion": "1.0.0",
   "description": "Beancount-compatible double-entry bookkeeping. Manage accounts, record transactions, and generate financial reports (balance sheet, income statement, trial balance).",
   "author": "takeshy",
-  "assets": []
+  "assets": [],
+  "permissions": ["storage", "drive", "gemini", "sheets"]
 }
