@@ -230,6 +230,7 @@ const translations: Record<string, Record<string, string>> = {
     "ai.attach.tooLarge": '"{0}" exceeds the 20MB size limit.',
     "ai.attach.unsupported": '"{0}" is not supported (only image/PDF).',
     "ai.attach.defaultPrompt": "Extract the journal entry from the attached document.",
+    "ai.error.noJson": "AI did not return a journal entry. Please add more detail or try again.",
 
     // Placeholder
     "accounts.nameExample": "Bank:Checking",
@@ -482,6 +483,7 @@ const translations: Record<string, Record<string, string>> = {
     "ai.attach.tooLarge": "「{0}」は20MBの上限を超えています。",
     "ai.attach.unsupported": "「{0}」は対応していません（画像/PDFのみ）。",
     "ai.attach.defaultPrompt": "添付された書類から仕訳を抽出してください。",
+    "ai.error.noJson": "AIから仕訳が得られませんでした。入力内容を詳しくしてもう一度お試しください。",
 
     // Placeholder
     "accounts.nameExample": "普通預金",

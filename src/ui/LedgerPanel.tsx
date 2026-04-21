@@ -754,7 +754,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
       const hasAttachments = aiAttachments.length > 0;
       const model = hasAttachments
         ? "gemini-2.5-flash"
-        : api.sheets ? "gemini-3.1-flash-lite" : "gemma-4";
+        : api.sheets ? "gemini-3.1-flash-lite-preview" : "gemma-4-31b-it";
       const accountList = ledger.accounts.map((a) => `${a.name} (${tAccount(a.name)})`).join(", ");
       const today = new Date().toISOString().slice(0, 10);
       const systemPromptLines = [
@@ -783,9 +783,14 @@ export function LedgerPanel(props: LedgerPanelProps) {
         }],
         { model, systemPrompt },
       );
-      // Extract JSON from response (strip markdown fences if present)
-      const jsonStr = raw.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
-      const data = JSON.parse(jsonStr) as {
+      // Extract JSON from response — LLM may wrap it in prose or markdown fences.
+      const stripped = raw.replace(/```json?\s*/gi, "").replace(/```\s*/g, "").trim();
+      const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        setAiError(stripped || t("ai.error.noJson"));
+        return;
+      }
+      const data = JSON.parse(jsonMatch[0]) as {
         date?: string; payee?: string; narration?: string;
         debit?: Array<{ account: string; amount: number; taxCategory?: string | null }>;
         credit?: Array<{ account: string; amount: number; taxCategory?: string | null }>;
@@ -1058,9 +1063,26 @@ export function LedgerPanel(props: LedgerPanelProps) {
   }
 
   // Main view
+  const handleOpenDashboard = () => {
+    const fy = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
+    setState({ activeReport: "dashboard", filterDateFrom: fy.start, filterDateTo: fy.end, filterQuery: "", filterAccount: "" });
+    if (fileIdRef.current) {
+      api.selectFile?.(fileIdRef.current, `${currentFiscalYear}.beancount`);
+    }
+  };
+
   return (
     <div className="accounting-panel">
-      <h3>{t("plugin.name")}</h3>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 8px" }}>
+        <h3 style={{ margin: 0 }}>{t("plugin.name")}</h3>
+        <button
+          className="accounting-btn accounting-btn-sm"
+          onClick={handleOpenDashboard}
+          title={t("report.dashboard")}
+        >
+          {t("report.dashboard")}
+        </button>
+      </div>
 
       <div className="accounting-actions" style={{ alignItems: "center" }}>
         {availableYears.length > 1 ? (
@@ -1084,15 +1106,6 @@ export function LedgerPanel(props: LedgerPanelProps) {
       <div className="accounting-actions">
         <button className="accounting-btn accounting-btn-primary" onClick={() => { setAiInput(""); setAiError(""); setAiAttachments([]); setShowAiModal(true); }}>
           &#x2728; {t("ai.button")}
-        </button>
-        <button className="accounting-btn" onClick={() => {
-          const fy = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
-          setState({ activeReport: "dashboard", filterDateFrom: fy.start, filterDateTo: fy.end, filterQuery: "", filterAccount: "" });
-          if (fileIdRef.current) {
-            api.selectFile?.(fileIdRef.current, `${currentFiscalYear}.beancount`);
-          }
-        }}>
-          {t("report.dashboard")}
         </button>
         <button className="accounting-btn" onClick={() => setView("addTransaction")}>
           + {t("txn.new")}
