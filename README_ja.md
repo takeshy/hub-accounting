@@ -1,5 +1,7 @@
 # Accounting - 複式簿記
 
+![Accounting](docs/accounting.png)
+
 Beancount互換の複式簿記を行う [GemiHub](https://github.com/takeshy/gemihub) プラグインです。勘定科目の管理、取引の記録、財務レポートの生成をプレーンテキストで行えます。
 
 [English](README.md)

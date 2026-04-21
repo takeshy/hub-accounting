@@ -50,7 +50,16 @@ interface PluginAPI {
   sheets?: SheetsAPI;
   gemini?: {
     chat(
-      messages: Array<{ role: string; content: string }>,
+      messages: Array<{
+        role: string;
+        content: string;
+        attachments?: Array<{
+          name: string;
+          type: "image" | "pdf" | "text" | "audio" | "video";
+          mimeType: string;
+          data: string;
+        }>;
+      }>,
       options?: { model?: string; systemPrompt?: string },
     ): Promise<string>;
   };
@@ -93,7 +102,15 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [aiError, setAiError] = React.useState("");
   const [aiLoading, setAiLoading] = React.useState(false);
   const [acIndex, setAcIndex] = React.useState(0);
-  const aiInputRef = React.useRef<HTMLInputElement>(null);
+  const aiInputRef = React.useRef<HTMLTextAreaElement>(null);
+  interface AiAttachment {
+    name: string;
+    type: "image" | "pdf";
+    mimeType: string;
+    data: string;
+  }
+  const [aiAttachments, setAiAttachments] = React.useState<AiAttachment[]>([]);
+  const aiFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Template editing state
   const [editingTemplate, setEditingTemplate] = React.useState<JournalTemplate | null>(null);
@@ -645,12 +662,62 @@ export function LedgerPanel(props: LedgerPanelProps) {
     setShowAiModal(false);
     setAiInput("");
     setAiError("");
+    setAiAttachments([]);
     setView("addTransaction");
+  }
+
+  const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
+
+  function fileToAttachment(file: File): Promise<AiAttachment> {
+    return new Promise((resolve, reject) => {
+      if (file.size > MAX_ATTACHMENT_SIZE) {
+        reject(new Error(tFormat("ai.attach.tooLarge", file.name)));
+        return;
+      }
+      const isImage = file.type.startsWith("image/");
+      const isPdf = file.type === "application/pdf";
+      if (!isImage && !isPdf) {
+        reject(new Error(tFormat("ai.attach.unsupported", file.name)));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(",")[1] ?? "";
+        resolve({
+          name: file.name,
+          type: isImage ? "image" : "pdf",
+          mimeType: file.type || (isPdf ? "application/pdf" : "application/octet-stream"),
+          data: base64,
+        });
+      };
+      reader.onerror = () => reject(reader.error || new Error("read error"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleAttachFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setAiError("");
+    const added: AiAttachment[] = [];
+    for (const file of Array.from(files)) {
+      try {
+        added.push(await fileToAttachment(file));
+      } catch (err) {
+        setAiError(err instanceof Error ? err.message : String(err));
+      }
+    }
+    if (added.length > 0) setAiAttachments((prev) => [...prev, ...added]);
+  }
+
+  function removeAttachment(index: number) {
+    setAiAttachments((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleAiSubmit() {
     const input = aiInput.trim();
-    if (!input || !ledger) return;
+    if (!ledger) return;
+    if (!input && aiAttachments.length === 0) return;
 
     // Slash command: /{name} {amount} [{narration}]
     const slashMatch = input.match(/^\/(\S+)\s*(.*)/);
@@ -684,20 +751,36 @@ export function LedgerPanel(props: LedgerPanelProps) {
     setAiLoading(true);
     setAiError("");
     try {
-      const model = api.sheets ? "gemini-3.1-flash-lite" : "gemma-4";
+      const hasAttachments = aiAttachments.length > 0;
+      const model = hasAttachments
+        ? "gemini-2.5-flash"
+        : api.sheets ? "gemini-3.1-flash-lite" : "gemma-4";
       const accountList = ledger.accounts.map((a) => `${a.name} (${tAccount(a.name)})`).join(", ");
       const today = new Date().toISOString().slice(0, 10);
-      const systemPrompt = [
+      const systemPromptLines = [
         "You are a Japanese accounting assistant. Parse the user's description into a double-entry journal entry.",
         `Available accounts: ${accountList}`,
         `Default currency: ${settings.defaultCurrency}`,
         `Today's date: ${today}`,
         "Tax categories: taxable_10 (課税10%), taxable_8 (課税8%軽減), exempt (非課税), non_taxable (不課税), tax_free (免税). Use null if not applicable.",
+      ];
+      if (hasAttachments) {
+        systemPromptLines.push(
+          "The user has attached a receipt, invoice, or similar document (image or PDF). Extract the date, payee, amount, and purpose from it. If the user's text refines or contradicts the document, prefer the user's text.",
+        );
+      }
+      systemPromptLines.push(
         "Return ONLY a JSON object (no markdown, no explanation):",
         '{"date":"YYYY-MM-DD","payee":"","narration":"description","debit":[{"account":"Account:Name","amount":1000,"taxCategory":null}],"credit":[{"account":"Account:Name","amount":1000,"taxCategory":null}]}',
-      ].join("\n");
+      );
+      const systemPrompt = systemPromptLines.join("\n");
+      const userContent = input || t("ai.attach.defaultPrompt");
       const raw = await api.gemini.chat(
-        [{ role: "user", content: input }],
+        [{
+          role: "user",
+          content: userContent,
+          ...(hasAttachments ? { attachments: aiAttachments } : {}),
+        }],
         { model, systemPrompt },
       );
       // Extract JSON from response (strip markdown fences if present)
@@ -999,7 +1082,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
       </div>
 
       <div className="accounting-actions">
-        <button className="accounting-btn accounting-btn-primary" onClick={() => { setAiInput(""); setAiError(""); setShowAiModal(true); }}>
+        <button className="accounting-btn accounting-btn-primary" onClick={() => { setAiInput(""); setAiError(""); setAiAttachments([]); setShowAiModal(true); }}>
           &#x2728; {t("ai.button")}
         </button>
         <button className="accounting-btn" onClick={() => {
@@ -1032,16 +1115,16 @@ export function LedgerPanel(props: LedgerPanelProps) {
             <div className="accounting-dialog-body">
               <p style={{ fontSize: 12, color: "#888", margin: "0 0 8px" }}>{t("ai.hint")}</p>
               <div style={{ position: "relative" }}>
-                <input
+                <textarea
                   ref={aiInputRef}
-                  type="text"
                   value={aiInput}
                   onChange={(e) => handleAiInputChange(e.target.value)}
                   onKeyDown={handleAiKeyDown}
                   placeholder={t("ai.placeholder")}
                   disabled={aiLoading}
                   autoFocus
-                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid #444", borderRadius: 4, background: "#1e1e1e", color: "#e0e0e0", fontSize: 14 }}
+                  rows={3}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid #444", borderRadius: 4, background: "#1e1e1e", color: "#e0e0e0", fontSize: 14, fontFamily: "inherit", resize: "vertical", minHeight: 72 }}
                 />
                 {showAc && (
                   <div className="accounting-autocomplete">
@@ -1059,6 +1142,46 @@ export function LedgerPanel(props: LedgerPanelProps) {
                   </div>
                 )}
               </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="accounting-btn accounting-btn-sm"
+                  onClick={() => aiFileInputRef.current?.click()}
+                  disabled={aiLoading}
+                >
+                  &#128206; {t("ai.attach.button")}
+                </button>
+                <input
+                  ref={aiFileInputRef}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    handleAttachFiles(e.target.files);
+                    if (aiFileInputRef.current) aiFileInputRef.current.value = "";
+                  }}
+                />
+                {aiAttachments.map((att, i) => (
+                  <span
+                    key={i}
+                    className="accounting-ai-attachment"
+                    title={att.name}
+                  >
+                    <span style={{ marginRight: 4 }}>{att.type === "image" ? "\u{1F5BC}" : "\u{1F4C4}"}</span>
+                    <span className="accounting-ai-attachment-name">{att.name}</span>
+                    <button
+                      type="button"
+                      className="accounting-ai-attachment-remove"
+                      onClick={() => removeAttachment(i)}
+                      aria-label={t("ai.attach.remove")}
+                      disabled={aiLoading}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
               {aiLoading && (
                 <div style={{ fontSize: 12, color: "#888", marginTop: 8 }}>{t("ai.loading")}</div>
               )}
@@ -1068,7 +1191,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
             </div>
             <div className="accounting-dialog-footer">
               <button className="accounting-btn" onClick={() => setShowAiModal(false)}>{t("cancel")}</button>
-              <button className="accounting-btn accounting-btn-primary" onClick={handleAiSubmit} disabled={aiLoading || !aiInput.trim()}>
+              <button className="accounting-btn accounting-btn-primary" onClick={handleAiSubmit} disabled={aiLoading || (!aiInput.trim() && aiAttachments.length === 0)}>
                 {t("ai.submit")}
               </button>
             </div>

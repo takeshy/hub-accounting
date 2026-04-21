@@ -1,5 +1,7 @@
 # Accounting - Double-Entry Bookkeeping
 
+![Accounting](docs/accounting.png)
+
 A [GemiHub](https://github.com/takeshy/gemihub) plugin for Beancount-compatible double-entry bookkeeping. Manage accounts, record transactions, and generate financial reports — all in plain text.
 
 [Japanese / 日本語](README_ja.md)

@@ -220,11 +220,16 @@ const translations: Record<string, Record<string, string>> = {
     // AI input
     "ai.button": "AI Input",
     "ai.title": "AI Input",
-    "ai.hint": "Type / for templates, or describe a transaction in plain text.",
+    "ai.hint": "Type / for templates, or describe a transaction in plain text. You can also attach a receipt or invoice (image/PDF).",
     "ai.placeholder": "/template or free text...",
     "ai.submit": "Generate",
     "ai.loading": "Analyzing...",
     "ai.noApi": "AI is not available.",
+    "ai.attach.button": "Attach",
+    "ai.attach.remove": "Remove",
+    "ai.attach.tooLarge": '"{0}" exceeds the 20MB size limit.',
+    "ai.attach.unsupported": '"{0}" is not supported (only image/PDF).',
+    "ai.attach.defaultPrompt": "Extract the journal entry from the attached document.",
 
     // Placeholder
     "accounts.nameExample": "Bank:Checking",
@@ -467,11 +472,16 @@ const translations: Record<string, Record<string, string>> = {
     // AI input
     "ai.button": "AI入力",
     "ai.title": "AI入力",
-    "ai.hint": "/ でテンプレート選択、または取引内容を自由に入力してください。",
+    "ai.hint": "/ でテンプレート選択、または取引内容を自由に入力してください。領収書・請求書（画像/PDF）を添付することもできます。",
     "ai.placeholder": "/テンプレート名 または自由入力...",
     "ai.submit": "生成",
     "ai.loading": "解析中...",
     "ai.noApi": "AIが利用できません。",
+    "ai.attach.button": "添付",
+    "ai.attach.remove": "削除",
+    "ai.attach.tooLarge": "「{0}」は20MBの上限を超えています。",
+    "ai.attach.unsupported": "「{0}」は対応していません（画像/PDFのみ）。",
+    "ai.attach.defaultPrompt": "添付された書類から仕訳を抽出してください。",
 
     // Placeholder
     "accounts.nameExample": "普通預金",
