@@ -113,6 +113,13 @@ export function calculateBalances(
   return result.sort((a, b) => a.account.localeCompare(b.account));
 }
 
+/** Shift YYYY-MM-DD string by day delta */
+function shiftDate(date: string, deltaDays: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Get balances grouped by account type */
 export function getBalancesByType(
   balances: AccountBalance[]
@@ -192,7 +199,8 @@ export function validate(ledger: LedgerData): LedgerError[] {
   // Check balance assertions
   for (const dir of ledger.directives) {
     if (dir.type === "balance") {
-      const balances = calculateBalances(ledger, dir.date);
+      // Beancount's balance directive is evaluated at the beginning of the day.
+      const balances = calculateBalances(ledger, shiftDate(dir.date, -1));
       const accBal = balances.find((b) => b.account === dir.account);
       const actual = accBal?.balances[dir.currency] || 0;
       if (Math.abs(actual - dir.amount) > 0.005) {
