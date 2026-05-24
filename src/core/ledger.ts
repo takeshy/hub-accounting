@@ -12,6 +12,7 @@ import {
   AccountType,
   ACCOUNT_TYPES,
   Directive,
+  BalanceDirective,
   LedgerTemplate,
 } from "../types";
 import { uid } from "../format";
@@ -292,6 +293,20 @@ export function addAccount(
     directives: [
       ...ledger.directives,
       { type: "open", date: account.openDate, account: account.name, currencies: account.currencies },
+    ],
+  });
+}
+
+/** Add a balance assertion directive to a ledger */
+export function addBalanceDirective(
+  ledger: LedgerData,
+  directive: Omit<BalanceDirective, "type">
+): LedgerData {
+  return refreshErrors({
+    ...ledger,
+    directives: [
+      ...ledger.directives,
+      { type: "balance", ...directive },
     ],
   });
 }

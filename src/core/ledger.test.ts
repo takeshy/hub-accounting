@@ -5,6 +5,7 @@ import {
   calculateBalances,
   addTransaction,
   removeTransaction,
+  addBalanceDirective,
   createEmptyLedger,
   validate,
   refreshErrors,
@@ -150,6 +151,27 @@ describe("calculateBalances", () => {
     const allBalances = calculateBalances(l);
     const foodBalAll = allBalances.find((b) => b.account === "Expenses:Food");
     expect(foodBalAll?.balances["JPY"]).toBe(3000);
+  });
+});
+
+describe("addBalanceDirective", () => {
+  it("adds a balance directive and refreshes validation errors", () => {
+    const ledger = createEmptyLedger("JPY");
+    const next = addBalanceDirective(ledger, {
+      date: "2024-01-31",
+      account: "Assets:Cash",
+      amount: 1000,
+      currency: "JPY",
+    });
+
+    expect(next.directives[next.directives.length - 1]).toEqual({
+      type: "balance",
+      date: "2024-01-31",
+      account: "Assets:Cash",
+      amount: 1000,
+      currency: "JPY",
+    });
+    expect(next.errors.some((e) => e.message.includes("Balance assertion failed"))).toBe(true);
   });
 });
 

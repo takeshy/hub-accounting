@@ -64,6 +64,9 @@ const translations: Record<string, Record<string, string>> = {
     "accounts.type": "Account Type",
     "accounts.list": "Accounts",
 
+    // Balance assertions
+    "balance.new": "Add Balance Check",
+
     // File
     "file.new": "New Ledger",
     "file.open": "Open",
@@ -306,6 +309,9 @@ const translations: Record<string, Record<string, string>> = {
     "accounts.name": "勘定科目名",
     "accounts.type": "勘定科目種別",
     "accounts.list": "勘定科目一覧",
+
+    // Balance assertions
+    "balance.new": "残高検証を追加",
 
     // File
     "file.new": "新規帳簿",

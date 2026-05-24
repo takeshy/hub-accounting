@@ -25,6 +25,7 @@ import {
   addTransaction,
   updateTransaction,
   addAccount,
+  addBalanceDirective,
   createEmptyLedger,
   isBalanced,
   refreshErrors,
@@ -75,7 +76,7 @@ interface LedgerPanelProps {
   language?: string;
 }
 
-type PanelView = "main" | "addTransaction" | "addAccount" | "templates" | "editTemplate";
+type PanelView = "main" | "addTransaction" | "addAccount" | "addBalance" | "templates" | "editTemplate";
 
 export function LedgerPanel(props: LedgerPanelProps) {
   const { api } = props;
@@ -164,6 +165,16 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [accName, setAccName] = React.useState("");
   const [accType, setAccType] = React.useState<AccountType>("Expenses");
   const [accDate, setAccDate] = React.useState(new Date().toISOString().slice(0, 10));
+
+  // Balance assertion form state
+  const [balanceDate, setBalanceDate] = React.useState(new Date().toISOString().slice(0, 10));
+  const [balanceAccount, setBalanceAccount] = React.useState("");
+  const [balanceAmount, setBalanceAmount] = React.useState("");
+  const [balanceCurrency, setBalanceCurrency] = React.useState(settings.defaultCurrency);
+
+  React.useEffect(() => {
+    setBalanceCurrency(settings.defaultCurrency);
+  }, [settings.defaultCurrency]);
 
   // Language
   React.useEffect(() => {
@@ -435,6 +446,23 @@ export function LedgerPanel(props: LedgerPanelProps) {
     setState({ ledger: newLedger });
     saveLedger(newLedger);
     setAccName("");
+    setView("main");
+  }
+
+  function handleSubmitBalance() {
+    if (!ledger || !balanceAccount || balanceAmount === "") return;
+    const amount = Number(balanceAmount);
+    if (!Number.isFinite(amount)) return;
+
+    const newLedger = addBalanceDirective(ledger, {
+      date: balanceDate,
+      account: balanceAccount,
+      amount,
+      currency: balanceCurrency || settings.defaultCurrency,
+    });
+    setState({ ledger: newLedger });
+    saveLedger(newLedger);
+    setBalanceAmount("");
     setView("main");
   }
 
@@ -919,6 +947,52 @@ export function LedgerPanel(props: LedgerPanelProps) {
     );
   }
 
+  if (view === "addBalance") {
+    return (
+      <div className="accounting-panel">
+        <h3>{t("balance.new")}</h3>
+        <div className="accounting-form">
+          <label>{t("date")}</label>
+          <input type="date" value={balanceDate} onChange={(e) => setBalanceDate(e.target.value)} />
+
+          <label>{t("account")}</label>
+          <select value={balanceAccount} onChange={(e) => setBalanceAccount(e.target.value)}>
+            <option value="">{t("account")}</option>
+            {ledger.accounts.map((a) => (
+              <option key={a.name} value={a.name}>{tAccount(a.name)}</option>
+            ))}
+          </select>
+
+          <label>{t("amount")}</label>
+          <input
+            type="number"
+            value={balanceAmount}
+            onChange={(e) => setBalanceAmount(e.target.value)}
+            placeholder={t("amount")}
+            step="any"
+          />
+
+          <label>{t("currency")}</label>
+          <input
+            type="text"
+            value={balanceCurrency}
+            onChange={(e) => setBalanceCurrency(e.target.value.toUpperCase())}
+            placeholder={settings.defaultCurrency}
+          />
+        </div>
+
+        <div className="accounting-form-actions">
+          <button className="accounting-btn accounting-btn-primary" onClick={handleSubmitBalance}>
+            {t("save")}
+          </button>
+          <button className="accounting-btn" onClick={() => setView("main")}>
+            {t("cancel")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (view === "templates") {
     return (
       <div className="accounting-panel">
@@ -1112,6 +1186,9 @@ export function LedgerPanel(props: LedgerPanelProps) {
         </button>
         <button className="accounting-btn" onClick={() => setView("addAccount")}>
           + {t("accounts.open")}
+        </button>
+        <button className="accounting-btn" onClick={() => setView("addBalance")}>
+          + {t("balance.new")}
         </button>
         <button className="accounting-btn" onClick={() => setView("templates")}>
           {t("template.title")}
