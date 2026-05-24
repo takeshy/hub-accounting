@@ -213,6 +213,46 @@ describe("validate", () => {
     const errors = validate(l);
     expect(errors.some((e) => e.message.includes("not opened"))).toBe(true);
   });
+
+  it("evaluates balance directives at the beginning of the day", () => {
+    const ledger: LedgerData = {
+      ...createEmptyLedger("JPY"),
+      directives: [
+        { type: "open", date: "2024-01-01", account: "Assets:Cash", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Equity:Opening-Balances", currencies: ["JPY"] },
+        { type: "balance", date: "2024-01-10", account: "Assets:Cash", amount: 1000, currency: "JPY" },
+      ],
+      transactions: [
+        {
+          id: "txn-1",
+          date: "2024-01-09",
+          flag: "*",
+          narration: "opening",
+          postings: [
+            { account: "Assets:Cash", amount: 1000, currency: "JPY" },
+            { account: "Equity:Opening-Balances", amount: -1000, currency: "JPY" },
+          ],
+          tags: [],
+          links: [],
+        },
+        {
+          id: "txn-2",
+          date: "2024-01-10",
+          flag: "*",
+          narration: "same day expense",
+          postings: [
+            { account: "Expenses:Food", amount: 200, currency: "JPY" },
+            { account: "Assets:Cash", amount: -200, currency: "JPY" },
+          ],
+          tags: [],
+          links: [],
+        },
+      ],
+    };
+
+    const errors = validate(ledger);
+    expect(errors.some((e) => e.message.includes("Balance assertion failed"))).toBe(false);
+  });
 });
 
 describe("createEmptyLedger", () => {
