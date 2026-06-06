@@ -137,6 +137,8 @@ const translations: Record<string, Record<string, string>> = {
     "export.freeeCSV": "Export freee CSV",
     "export.googleSheets": "Export to Google Sheets",
     "export.exporting": "Exporting...",
+    "export.freeeSuccess": "Created {0}",
+    "export.noTransactions": "No transactions to export for this fiscal year",
 
     // CSV Import
     "import.csv": "Import Bank CSV",
@@ -409,6 +411,8 @@ const translations: Record<string, Record<string, string>> = {
     "export.freeeCSV": "freee CSV出力",
     "export.googleSheets": "Google Sheets出力",
     "export.exporting": "出力中...",
+    "export.freeeSuccess": "{0} を作成しました",
+    "export.noTransactions": "この年度に出力対象の取引がありません",
 
     // CSV Import
     "import.csv": "銀行CSV取込",

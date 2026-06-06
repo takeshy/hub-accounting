@@ -476,9 +476,24 @@ export function LedgerPanel(props: LedgerPanelProps) {
 
   async function handleExportFreeeCSV() {
     if (!ledger) return;
-    const { start, end } = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
-    const csv = exportFreeeCSV(ledger, start, end, settings.defaultCurrency, t);
-    await api.drive.createFile(`freee_${currentFiscalYear}.csv`, csv);
+    setExporting(true);
+    try {
+      const { start, end } = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
+      const txns = ledger.transactions.filter((txn) => txn.date >= start && txn.date <= end);
+      if (txns.length === 0) {
+        alert(t("export.noTransactions"));
+        return;
+      }
+
+      const csv = exportFreeeCSV(ledger, start, end, settings.defaultCurrency, t);
+      const file = await api.drive.createFile(`freee_${currentFiscalYear}.csv`, csv);
+      api.selectFile?.(file.id, file.name, "text/csv");
+      alert(tFormat("export.freeeSuccess", file.name));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExporting(false);
+    }
   }
 
   const [exporting, setExporting] = React.useState(false);
@@ -1368,8 +1383,8 @@ export function LedgerPanel(props: LedgerPanelProps) {
         <button className="accounting-btn accounting-btn-primary" onClick={() => setShowImport(true)}>
           {t("import.csv")}
         </button>
-        <button className="accounting-btn" onClick={handleExportFreeeCSV}>
-          {t("export.freeeCSV")}
+        <button className="accounting-btn" onClick={handleExportFreeeCSV} disabled={exporting}>
+          {exporting ? t("export.exporting") : t("export.freeeCSV")}
         </button>
         {api.sheets && (
           <button className="accounting-btn" onClick={handleExportGoogleSheets} disabled={exporting}>
