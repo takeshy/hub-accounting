@@ -86,6 +86,8 @@ function formatDirective(dir: Directive, decimalPlaces: number): string {
   switch (dir.type) {
     case "option":
       return `option "${dir.key}" "${dir.value}"`;
+    case "include":
+      return `include "${dir.path}"`;
     case "open": {
       const currencies = dir.currencies.length > 0 ? " " + dir.currencies.join(",") : "";
       return `${dir.date} open ${dir.account}${currencies}`;
@@ -98,6 +100,10 @@ function formatDirective(dir: Directive, decimalPlaces: number): string {
       return `${dir.date} pad ${dir.account} ${dir.padAccount}`;
     case "commodity":
       return `${dir.date} commodity ${dir.currency}`;
+    case "note":
+      return `${dir.date} note ${dir.account} "${dir.comment}"`;
+    case "price":
+      return `${dir.date} price ${dir.currency} ${formatAmount(dir.amount, decimalPlaces)} ${dir.targetCurrency}`;
     case "transaction":
       return formatTransaction(dir.data, decimalPlaces);
     case "comment":

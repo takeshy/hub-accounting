@@ -230,4 +230,48 @@ describe("parser", () => {
     const result = parse(text);
     expect(result.transactions[0].postings[0].taxCategory).toBeUndefined();
   });
+
+  it("parses include directive", () => {
+    const text = `include "expenses.beancount"`;
+    const result = parse(text);
+    expect(result.directives[0]).toEqual({
+      type: "include",
+      path: "expenses.beancount",
+    });
+  });
+
+  it("parses note directive", () => {
+    const text = `2024-01-15 note Assets:Cash "Opened new account"`;
+    const result = parse(text);
+    expect(result.directives[0]).toEqual({
+      type: "note",
+      date: "2024-01-15",
+      account: "Assets:Cash",
+      comment: "Opened new account",
+    });
+  });
+
+  it("parses price directive", () => {
+    const text = `2024-01-15 price USD 150.50 JPY`;
+    const result = parse(text);
+    expect(result.directives[0]).toEqual({
+      type: "price",
+      date: "2024-01-15",
+      currency: "USD",
+      amount: 150.5,
+      targetCurrency: "JPY",
+    });
+  });
+
+  it("parses price directive with commas", () => {
+    const text = `2024-01-15 price BTC 5,000,000 JPY`;
+    const result = parse(text);
+    expect(result.directives[0]).toEqual({
+      type: "price",
+      date: "2024-01-15",
+      currency: "BTC",
+      amount: 5000000,
+      targetCurrency: "JPY",
+    });
+  });
 });

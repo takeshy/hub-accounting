@@ -9,6 +9,7 @@ import {
   createEmptyLedger,
   validate,
   refreshErrors,
+  processPadDirectives,
 } from "./ledger";
 import { Transaction, LedgerData } from "../types";
 
@@ -334,5 +335,180 @@ describe("refreshErrors", () => {
     const refreshed = refreshErrors(ledger);
     expect(refreshed.errors.some((e) => e.line === 3 && e.message === "Parse error")).toBe(true);
     expect(refreshed.errors.some((e) => e.message.includes("Unbalanced transaction"))).toBe(true);
+  });
+});
+
+describe("processPadDirectives", () => {
+  it("generates a padding transaction to fill balance gap", () => {
+    const ledger: LedgerData = {
+      ...createEmptyLedger("JPY"),
+      directives: [
+        { type: "open", date: "2024-01-01", account: "Assets:Cash", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Equity:Opening-Balances", currencies: ["JPY"] },
+        { type: "pad", date: "2024-01-01", account: "Assets:Cash", padAccount: "Equity:Opening-Balances" },
+        { type: "balance", date: "2024-01-10", account: "Assets:Cash", amount: 10000, currency: "JPY" },
+      ],
+      transactions: [],
+    };
+
+    const result = processPadDirectives(ledger);
+    expect(result.transactions).toHaveLength(1);
+    expect(result.transactions[0].postings[0].account).toBe("Assets:Cash");
+    expect(result.transactions[0].postings[0].amount).toBe(10000);
+    expect(result.transactions[0].postings[1].account).toBe("Equity:Opening-Balances");
+    expect(result.transactions[0].postings[1].amount).toBe(-10000);
+  });
+
+  it("accounts for existing balance before pad date", () => {
+    const ledger: LedgerData = {
+      ...createEmptyLedger("JPY"),
+      directives: [
+        { type: "open", date: "2024-01-01", account: "Assets:Cash", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Equity:Opening-Balances", currencies: ["JPY"] },
+        { type: "pad", date: "2024-01-05", account: "Assets:Cash", padAccount: "Equity:Opening-Balances" },
+        { type: "balance", date: "2024-01-10", account: "Assets:Cash", amount: 10000, currency: "JPY" },
+      ],
+      transactions: [
+        {
+          id: "existing-1",
+          date: "2024-01-03",
+          flag: "*",
+          narration: "Initial deposit",
+          postings: [
+            { account: "Assets:Cash", amount: 3000, currency: "JPY" },
+            { account: "Equity:Opening-Balances", amount: -3000, currency: "JPY" },
+          ],
+          tags: [],
+          links: [],
+        },
+      ],
+    };
+
+    const result = processPadDirectives(ledger);
+    const padTxn = result.transactions.find((t) => t.tags.includes("pad"));
+    expect(padTxn).toBeDefined();
+    expect(padTxn!.postings[0].amount).toBe(7000);
+  });
+
+  it("accounts for transactions between pad date and balance assertion", () => {
+    const ledger: LedgerData = {
+      ...createEmptyLedger("JPY"),
+      directives: [
+        { type: "open", date: "2024-01-01", account: "Assets:Cash", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Equity:Opening-Balances", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Income:Sales", currencies: ["JPY"] },
+        { type: "pad", date: "2024-01-01", account: "Assets:Cash", padAccount: "Equity:Opening-Balances" },
+        { type: "balance", date: "2024-01-10", account: "Assets:Cash", amount: 10000, currency: "JPY" },
+      ],
+      transactions: [
+        {
+          id: "existing-1",
+          date: "2024-01-05",
+          flag: "*",
+          narration: "Sale",
+          postings: [
+            { account: "Assets:Cash", amount: 3000, currency: "JPY" },
+            { account: "Income:Sales", amount: -3000, currency: "JPY" },
+          ],
+          tags: [],
+          links: [],
+        },
+      ],
+    };
+
+    const result = processPadDirectives(ledger);
+    const padTxn = result.transactions.find((t) => t.tags.includes("pad"));
+    expect(padTxn).toBeDefined();
+    expect(padTxn!.postings[0].amount).toBe(7000);
+  });
+
+  it("is idempotent when run repeatedly", () => {
+    const ledger: LedgerData = {
+      ...createEmptyLedger("JPY"),
+      directives: [
+        { type: "open", date: "2024-01-01", account: "Assets:Cash", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Equity:Opening-Balances", currencies: ["JPY"] },
+        { type: "pad", date: "2024-01-01", account: "Assets:Cash", padAccount: "Equity:Opening-Balances" },
+        { type: "balance", date: "2024-01-10", account: "Assets:Cash", amount: 10000, currency: "JPY" },
+      ],
+      transactions: [],
+    };
+
+    const once = processPadDirectives(ledger);
+    const twice = processPadDirectives(once);
+    expect(twice.transactions.filter((t) => t.tags.includes("pad"))).toHaveLength(1);
+    expect(twice.transactions.filter((t) => t.tags.includes("pad"))[0].postings[0].amount).toBe(10000);
+  });
+
+  it("uses the nearest following balance assertion by date", () => {
+    const ledger: LedgerData = {
+      ...createEmptyLedger("JPY"),
+      directives: [
+        { type: "open", date: "2024-01-01", account: "Assets:Cash", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Equity:Opening-Balances", currencies: ["JPY"] },
+        { type: "pad", date: "2024-01-01", account: "Assets:Cash", padAccount: "Equity:Opening-Balances" },
+        { type: "balance", date: "2024-02-01", account: "Assets:Cash", amount: 20000, currency: "JPY" },
+        { type: "balance", date: "2024-01-10", account: "Assets:Cash", amount: 10000, currency: "JPY" },
+      ],
+      transactions: [],
+    };
+
+    const result = processPadDirectives(ledger);
+    const padTxn = result.transactions.find((t) => t.tags.includes("pad"));
+    expect(padTxn).toBeDefined();
+    expect(padTxn!.postings[0].amount).toBe(10000);
+  });
+
+  it("does nothing when no pad directives exist", () => {
+    const ledger = createEmptyLedger("JPY");
+    const result = processPadDirectives(ledger);
+    expect(result.transactions).toHaveLength(0);
+  });
+
+  it("does nothing when no balance assertion follows pad", () => {
+    const ledger: LedgerData = {
+      ...createEmptyLedger("JPY"),
+      directives: [
+        { type: "open", date: "2024-01-01", account: "Assets:Cash", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Equity:Opening-Balances", currencies: ["JPY"] },
+        { type: "pad", date: "2024-01-01", account: "Assets:Cash", padAccount: "Equity:Opening-Balances" },
+      ],
+      transactions: [],
+    };
+
+    const result = processPadDirectives(ledger);
+    expect(result.transactions).toHaveLength(0);
+  });
+
+  it("does nothing when balance already matches", () => {
+    const ledger: LedgerData = {
+      ...createEmptyLedger("JPY"),
+      directives: [
+        { type: "open", date: "2024-01-01", account: "Assets:Cash", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Equity:Opening-Balances", currencies: ["JPY"] },
+        { type: "pad", date: "2024-01-01", account: "Assets:Cash", padAccount: "Equity:Opening-Balances" },
+        { type: "balance", date: "2024-01-10", account: "Assets:Cash", amount: 0, currency: "JPY" },
+      ],
+      transactions: [],
+    };
+
+    const result = processPadDirectives(ledger);
+    expect(result.transactions).toHaveLength(0);
+  });
+
+  it("generates balanced padding transaction", () => {
+    const ledger: LedgerData = {
+      ...createEmptyLedger("JPY"),
+      directives: [
+        { type: "open", date: "2024-01-01", account: "Assets:Cash", currencies: ["JPY"] },
+        { type: "open", date: "2024-01-01", account: "Equity:Opening-Balances", currencies: ["JPY"] },
+        { type: "pad", date: "2024-01-01", account: "Assets:Cash", padAccount: "Equity:Opening-Balances" },
+        { type: "balance", date: "2024-01-10", account: "Assets:Cash", amount: 5000, currency: "JPY" },
+      ],
+      transactions: [],
+    };
+
+    const result = processPadDirectives(ledger);
+    expect(isBalanced(result.transactions[0])).toBe(true);
   });
 });

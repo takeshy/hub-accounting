@@ -62,6 +62,14 @@ export function parse(text: string): LedgerData {
       continue;
     }
 
+    // Include directive
+    const includeMatch = trimmed.match(/^include\s+"([^"]+)"/);
+    if (includeMatch) {
+      directives.push({ type: "include", path: includeMatch[1] });
+      i++;
+      continue;
+    }
+
     // Date-prefixed directives
     const dateMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})\s+(.*)$/);
     if (dateMatch) {
@@ -129,6 +137,28 @@ export function parse(text: string): LedgerData {
       const commodityMatch = rest.match(/^commodity\s+(\w+)$/);
       if (commodityMatch) {
         directives.push({ type: "commodity", date, currency: commodityMatch[1] });
+        i++;
+        continue;
+      }
+
+      // Note directive
+      const noteMatch = rest.match(/^note\s+([\w:-]+)\s+"([^"]*)"/);
+      if (noteMatch) {
+        directives.push({ type: "note", date, account: noteMatch[1], comment: noteMatch[2] });
+        i++;
+        continue;
+      }
+
+      // Price directive
+      const priceMatch = rest.match(/^price\s+(\w+)\s+([-\d.,]+)\s+(\w+)$/);
+      if (priceMatch) {
+        directives.push({
+          type: "price",
+          date,
+          currency: priceMatch[1],
+          amount: parseAmount(priceMatch[2]),
+          targetCurrency: priceMatch[3],
+        });
         i++;
         continue;
       }

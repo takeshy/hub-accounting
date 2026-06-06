@@ -107,6 +107,29 @@ export interface OptionDirective {
   value: string;
 }
 
+/** Include directive */
+export interface IncludeDirective {
+  type: "include";
+  path: string;
+}
+
+/** Note directive */
+export interface NoteDirective {
+  type: "note";
+  date: string;
+  account: string;
+  comment: string;
+}
+
+/** Price directive */
+export interface PriceDirective {
+  type: "price";
+  date: string;
+  currency: string;
+  amount: number;
+  targetCurrency: string;
+}
+
 /** All directive types */
 export type Directive =
   | { type: "open"; date: string; account: string; currencies: string[] }
@@ -116,6 +139,9 @@ export type Directive =
   | PadDirective
   | { type: "commodity"; date: string; currency: string }
   | OptionDirective
+  | IncludeDirective
+  | NoteDirective
+  | PriceDirective
   | { type: "comment"; text: string };
 
 /** Complete ledger data */

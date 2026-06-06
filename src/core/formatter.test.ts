@@ -170,4 +170,19 @@ describe("formatter", () => {
     ].join("\n");
     expect(format(parse(text), 0)).toBe(text + "\n");
   });
+
+  it("round-trips include directive", () => {
+    const text = `include "expenses.beancount"`;
+    expect(format(parse(text), 0)).toBe(text + "\n");
+  });
+
+  it("round-trips note directive", () => {
+    const text = `2024-01-15 note Assets:Cash "Opened new account"`;
+    expect(format(parse(text), 0)).toBe(text + "\n");
+  });
+
+  it("round-trips price directive", () => {
+    const text = `2024-01-15 price USD 150.50 JPY`;
+    expect(format(parse(text), 2)).toBe(text + "\n");
+  });
 });

@@ -13,6 +13,7 @@ import {
   ACCOUNT_TYPES,
   Directive,
   BalanceDirective,
+  PadDirective,
   LedgerTemplate,
 } from "../types";
 import { uid } from "../format";
@@ -309,6 +310,79 @@ export function addBalanceDirective(
       { type: "balance", ...directive },
     ],
   });
+}
+
+/**
+ * Process pad directives: generate padding transactions to fill the gap
+ * between the current account balance and the next balance assertion.
+ *
+ * Based on go-beancount's pkg/validation/pad:
+ * For each pad directive, find the next balance assertion for the same account.
+ * Generate a transaction on the pad date that moves the account balance
+ * to match the balance assertion amount.
+ */
+export function processPadDirectives(ledger: LedgerData): LedgerData {
+  const padDirectives = ledger.directives.filter(
+    (d): d is PadDirective => d.type === "pad"
+  );
+
+  if (padDirectives.length === 0) return ledger;
+
+  const isGeneratedPadTxn = (txn: Transaction): boolean =>
+    txn.tags.includes("pad") && txn.narration.startsWith("Pad adjustment for ");
+
+  const generatedPadIds = new Set(
+    ledger.transactions.filter(isGeneratedPadTxn).map((txn) => txn.id)
+  );
+
+  let result = refreshErrors({
+    ...ledger,
+    transactions: ledger.transactions.filter((txn) => !generatedPadIds.has(txn.id)),
+    directives: ledger.directives.filter(
+      (d) => !(d.type === "transaction" && generatedPadIds.has(d.data.id))
+    ),
+  });
+
+  const nextBalanceFor = (pad: PadDirective): BalanceDirective | null => {
+    const candidates = ledger.directives.filter(
+      (d): d is BalanceDirective =>
+        d.type === "balance" &&
+        d.account === pad.account &&
+        d.date > pad.date
+    );
+    if (candidates.length === 0) return null;
+    return candidates.sort((a, b) => a.date.localeCompare(b.date))[0];
+  };
+
+  for (const pad of padDirectives) {
+    const nextBalance = nextBalanceFor(pad);
+
+    if (!nextBalance) continue;
+
+    const balancesBefore = calculateBalances(result, shiftDate(nextBalance.date, -1));
+    const accBal = balancesBefore.find((b) => b.account === pad.account);
+    const currentAmount = accBal?.balances[nextBalance.currency] || 0;
+    const diff = nextBalance.amount - currentAmount;
+
+    if (Math.abs(diff) < 0.005) continue;
+
+    const txn: Transaction = {
+      id: uid(),
+      date: pad.date,
+      flag: "*",
+      narration: `Pad adjustment for ${pad.account}`,
+      postings: [
+        { account: pad.account, amount: diff, currency: nextBalance.currency },
+        { account: pad.padAccount, amount: -diff, currency: nextBalance.currency },
+      ],
+      tags: ["pad"],
+      links: [],
+    };
+
+    result = addTransaction(result, txn);
+  }
+
+  return result;
 }
 
 /** Japan sole proprietor account definitions (青色申告決算書準拠) */

@@ -94,6 +94,8 @@ export interface ParsedRow {
   rowIndex: number;
   date: string;
   description: string;
+  payee?: string;
+  narration?: string;
   withdrawal: number;
   deposit: number;
   counterpartAccount: string;
