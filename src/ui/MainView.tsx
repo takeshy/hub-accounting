@@ -24,6 +24,7 @@ import { parse } from "../core/parser";
 import { generateConsumptionTaxReport, ConsumptionTaxReport } from "../core/tax";
 import { getFiscalYear, getFiscalYearRange } from "../core/fiscal";
 import { DashboardView } from "./DashboardView";
+import { HoverTooltip } from "./HoverTooltip";
 
 interface PluginAPI {
   storage: {
@@ -273,10 +274,14 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
           <div className="accounting-txn-postings">
             {txn.postings.map((p, i) => (
               <div key={i} className="accounting-txn-posting">
-                <span className="accounting-posting-account">{tAccount(p.account)}</span>
+                <HoverTooltip ledger={ledger} type="account" name={p.account}>
+                  <span className="accounting-posting-account">{tAccount(p.account)}</span>
+                </HoverTooltip>
                 <span className={`accounting-posting-amount ${(p.amount || 0) < 0 ? "accounting-negative" : ""}`}>
                   {p.amount !== null ? formatNum(p.amount, settings.decimalPlaces) : ""}{" "}
-                  {currencyLabel(p.currency)}
+                  <HoverTooltip ledger={ledger} type="currency" name={p.currency}>
+                    <span>{currencyLabel(p.currency)}</span>
+                  </HoverTooltip>
                   {p.taxCategory && (
                     <span className="accounting-tax-badge">{t(`tax.${p.taxCategory}`)}</span>
                   )}

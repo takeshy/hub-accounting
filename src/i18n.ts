@@ -244,6 +244,32 @@ const translations: Record<string, Record<string, string>> = {
     "error.accountClosed": "Account is closed",
     "error.duplicateAccount": "Account already exists",
     "error.parseError": "Parse error",
+
+    // Rename
+    "rename": "Rename",
+    "rename.account": "Rename Account",
+    "rename.tag": "Rename Tag",
+    "rename.link": "Rename Link",
+    "rename.currency": "Rename Currency",
+    "rename.newName": "New Name",
+    "rename.confirm": "Rename \"{0}\" to \"{1}\"? ({2} occurrences)",
+    "rename.success": "Renamed {0} occurrences",
+    "rename.error.invalid": "Invalid name format",
+
+    // Completion
+    "completion.suggestions": "Suggestions",
+
+    // Hover
+    "hover.opened": "Opened",
+    "hover.closed": "Closed",
+    "hover.currencies": "Currencies",
+    "hover.latestPrice": "Latest Price",
+    "hover.noPrice": "No price recorded",
+
+    // Diagnostics
+    "diagnostics.errors": "{0} error(s)",
+    "diagnostics.warnings": "{0} warning(s)",
+    "diagnostics.noIssues": "No issues",
   },
   ja: {
     // General
@@ -500,6 +526,32 @@ const translations: Record<string, Record<string, string>> = {
     "error.accountClosed": "勘定科目は閉鎖されています",
     "error.duplicateAccount": "勘定科目は既に存在します",
     "error.parseError": "解析エラー",
+
+    // Rename
+    "rename": "名前変更",
+    "rename.account": "勘定科目名を変更",
+    "rename.tag": "タグ名を変更",
+    "rename.link": "リンク名を変更",
+    "rename.currency": "通貨名を変更",
+    "rename.newName": "新しい名前",
+    "rename.confirm": "「{0}」を「{1}」に変更しますか？（{2}箇所）",
+    "rename.success": "{0}箇所を変更しました",
+    "rename.error.invalid": "無効な名前形式です",
+
+    // Completion
+    "completion.suggestions": "候補",
+
+    // Hover
+    "hover.opened": "開設日",
+    "hover.closed": "閉鎖日",
+    "hover.currencies": "通貨",
+    "hover.latestPrice": "最新レート",
+    "hover.noPrice": "価格記録なし",
+
+    // Diagnostics
+    "diagnostics.errors": "{0}件のエラー",
+    "diagnostics.warnings": "{0}件の警告",
+    "diagnostics.noIssues": "問題なし",
   },
 };
 

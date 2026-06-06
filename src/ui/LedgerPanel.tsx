@@ -36,6 +36,11 @@ import { getFiscalYear, getFiscalYearFileName, getFiscalYearRange, carryForward 
 import { CsvImportDialog } from "./CsvImportDialog";
 import { getDefaultTemplates, buildPostings, parseArgs } from "../core/templates";
 import { autoBalance } from "../core/ledger";
+import { AutocompleteInput } from "./AutocompleteInput";
+import { DiagnosticsBadge } from "./DiagnosticsBadge";
+import { RenameDialog } from "./RenameDialog";
+import { collectPayees, collectNarrations } from "../core/completion";
+import { RenameTarget } from "../core/rename";
 
 interface PluginAPI {
   storage: {
@@ -123,6 +128,9 @@ export function LedgerPanel(props: LedgerPanelProps) {
     { account: "", multiplier: 1 },
     { account: "", multiplier: null },
   ]);
+
+  // Rename dialog state
+  const [renameTarget, setRenameTarget] = React.useState<{ target: RenameTarget; oldName: string } | null>(null);
 
   // Fiscal year state
   const [currentFiscalYear, setCurrentFiscalYear] = React.useState<number>(
@@ -862,18 +870,18 @@ export function LedgerPanel(props: LedgerPanelProps) {
           <input type="date" value={txnDate} onChange={(e) => setTxnDate(e.target.value)} />
 
           <label>{t("txn.payee")}</label>
-          <input
-            type="text"
+          <AutocompleteInput
             value={txnPayee}
-            onChange={(e) => setTxnPayee(e.target.value)}
+            onChange={setTxnPayee}
+            suggestions={ledger ? collectPayees(ledger).map((c) => c.label) : []}
             placeholder={t("txn.payee")}
           />
 
           <label>{t("txn.narration")}</label>
-          <input
-            type="text"
+          <AutocompleteInput
             value={txnNarration}
-            onChange={(e) => setTxnNarration(e.target.value)}
+            onChange={setTxnNarration}
+            suggestions={ledger ? collectNarrations(ledger, txnPayee || undefined).map((c) => c.label) : []}
             placeholder={t("txn.narration")}
           />
 
@@ -1149,6 +1157,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
     <div className="accounting-panel">
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 8px" }}>
         <h3 style={{ margin: 0 }}>{t("plugin.name")}</h3>
+        <DiagnosticsBadge ledger={ledger} />
         <button
           className="accounting-btn accounting-btn-sm"
           onClick={handleOpenDashboard}
@@ -1328,9 +1337,32 @@ export function LedgerPanel(props: LedgerPanelProps) {
               {t(`account.${a.type.toLowerCase()}.short`)}
             </span>
             <span className="accounting-account-name">{tAccount(a.name)}</span>
+            <button
+              className="accounting-account-rename-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRenameTarget({ target: "account", oldName: a.name });
+              }}
+              title={t("rename")}
+            >
+              ✎
+            </button>
           </div>
         ))}
       </div>
+
+      {renameTarget && (
+        <RenameDialog
+          ledger={ledger}
+          target={renameTarget.target}
+          oldName={renameTarget.oldName}
+          onRename={(newLedger) => {
+            setState({ ledger: newLedger });
+            saveLedger(newLedger);
+          }}
+          onClose={() => setRenameTarget(null)}
+        />
+      )}
 
       <div className="accounting-actions" style={{ marginTop: 16 }}>
         <button className="accounting-btn accounting-btn-primary" onClick={() => setShowImport(true)}>

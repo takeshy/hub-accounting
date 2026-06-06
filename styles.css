@@ -834,3 +834,164 @@
   word-break: break-word;
   font-family: "SF Mono", "Menlo", monospace;
 }
+
+/* Autocomplete */
+.accounting-autocomplete-wrapper {
+  position: relative;
+}
+
+.accounting-autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.accounting-autocomplete-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #e0e0e0;
+}
+
+.accounting-autocomplete-item:hover,
+.accounting-autocomplete-active {
+  background: #3a3a3a;
+}
+
+/* Hover tooltip */
+.accounting-hover-target {
+  position: relative;
+  display: inline-block;
+}
+
+.accounting-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 8px 12px;
+  min-width: 200px;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.accounting-tooltip-content {
+  margin: 0;
+  font-size: 11px;
+  color: #e0e0e0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SF Mono", "Menlo", monospace;
+}
+
+/* Diagnostics badge */
+.accounting-diagnostics {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  position: relative;
+}
+
+.accounting-diagnostics-clean {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+.accounting-diagnostics-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.accounting-diagnostics-error {
+  background: #ef4444;
+  color: #fff;
+}
+
+.accounting-diagnostics-warning {
+  background: #f59e0b;
+  color: #000;
+}
+
+.accounting-diagnostics-popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 150;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 8px;
+  min-width: 300px;
+  max-width: 400px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.accounting-diagnostics-item {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 3px;
+  margin-bottom: 4px;
+}
+
+.accounting-diagnostics-item.accounting-diagnostics-error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.accounting-diagnostics-item.accounting-diagnostics-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+
+.accounting-diagnostics-more {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+}
+
+/* Rename button in account list */
+.accounting-account-rename-btn {
+  opacity: 0;
+  transition: opacity 0.15s;
+  margin-left: auto;
+  padding: 2px 6px;
+  font-size: 10px;
+  background: transparent;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #888;
+  cursor: pointer;
+}
+
+.accounting-account-item:hover .accounting-account-rename-btn {
+  opacity: 1;
+}
+
+.accounting-account-rename-btn:hover {
+  background: #3a3a3a;
+  color: #e0e0e0;
+}
