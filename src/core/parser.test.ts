@@ -251,6 +251,43 @@ describe("parser", () => {
     });
   });
 
+  it("parses note directive with tags and links", () => {
+    const text = `2024-01-15 note Assets:Cash "Important note" #review ^note-001`;
+    const result = parse(text);
+    expect(result.directives[0]).toEqual({
+      type: "note",
+      date: "2024-01-15",
+      account: "Assets:Cash",
+      comment: "Important note",
+      tags: ["review"],
+      links: ["note-001"],
+    });
+  });
+
+  it("parses document directive", () => {
+    const text = `2024-01-15 document Assets:Cash "receipt.pdf"`;
+    const result = parse(text);
+    expect(result.directives[0]).toEqual({
+      type: "document",
+      date: "2024-01-15",
+      account: "Assets:Cash",
+      path: "receipt.pdf",
+    });
+  });
+
+  it("parses document directive with tags and links", () => {
+    const text = `2024-01-15 document Assets:Bank:Checking "statement.pdf" #bank ^statement-2024`;
+    const result = parse(text);
+    expect(result.directives[0]).toEqual({
+      type: "document",
+      date: "2024-01-15",
+      account: "Assets:Bank:Checking",
+      path: "statement.pdf",
+      tags: ["bank"],
+      links: ["statement-2024"],
+    });
+  });
+
   it("parses price directive", () => {
     const text = `2024-01-15 price USD 150.50 JPY`;
     const result = parse(text);

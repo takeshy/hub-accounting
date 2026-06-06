@@ -54,6 +54,30 @@ function collectCurrencyNames(ledger: LedgerData): Set<string> {
   return currencies;
 }
 
+function directiveHasTag(dir: Directive, tag: string): boolean {
+  switch (dir.type) {
+    case "transaction":
+      return dir.data.tags.includes(tag);
+    case "note":
+    case "document":
+      return dir.tags?.includes(tag) ?? false;
+    default:
+      return false;
+  }
+}
+
+function directiveHasLink(dir: Directive, link: string): boolean {
+  switch (dir.type) {
+    case "transaction":
+      return dir.data.links.includes(link);
+    case "note":
+    case "document":
+      return dir.links?.includes(link) ?? false;
+    default:
+      return false;
+  }
+}
+
 /**
  * Validate a new account name.
  * Must start with a valid account type and use valid characters.
@@ -163,6 +187,8 @@ export function renameAccount(
         };
       case "note":
         return { ...dir, account: countAccountChange(dir.account) };
+      case "document":
+        return { ...dir, account: countAccountChange(dir.account) };
       case "transaction":
         const txn = dir.data;
         const newPostings = txn.postings.map((p) => ({
@@ -207,8 +233,8 @@ export function renameTag(
   let changedCount = 0;
   if (
     oldName !== newName &&
-    ledger.transactions.some((txn) => txn.tags.includes(oldName)) &&
-    ledger.transactions.some((txn) => txn.tags.includes(newName))
+    ledger.directives.some((dir) => directiveHasTag(dir, oldName)) &&
+    ledger.directives.some((dir) => directiveHasTag(dir, newName))
   ) {
     throw new Error(`Rename would create duplicate tag: ${newName}`);
   }
@@ -219,18 +245,32 @@ export function renameTag(
   });
 
   const newDirectives: Directive[] = ledger.directives.map((dir) => {
-    if (dir.type === "transaction") {
-      const txn = dir.data;
-      const newTags = txn.tags.map((tag) => {
-        if (tag === oldName) {
-          changedCount++;
-          return newName;
-        }
-        return tag;
-      });
-      return { ...dir, data: { ...txn, tags: newTags } };
+    switch (dir.type) {
+      case "transaction": {
+        const txn = dir.data;
+        const newTags = txn.tags.map((tag) => {
+          if (tag === oldName) {
+            changedCount++;
+            return newName;
+          }
+          return tag;
+        });
+        return { ...dir, data: { ...txn, tags: newTags } };
+      }
+      case "note":
+      case "document": {
+        const newTags = dir.tags?.map((tag) => {
+          if (tag === oldName) {
+            changedCount++;
+            return newName;
+          }
+          return tag;
+        });
+        return newTags ? { ...dir, tags: newTags } : dir;
+      }
+      default:
+        return dir;
     }
-    return dir;
   });
 
   return {
@@ -258,8 +298,8 @@ export function renameLink(
   let changedCount = 0;
   if (
     oldName !== newName &&
-    ledger.transactions.some((txn) => txn.links.includes(oldName)) &&
-    ledger.transactions.some((txn) => txn.links.includes(newName))
+    ledger.directives.some((dir) => directiveHasLink(dir, oldName)) &&
+    ledger.directives.some((dir) => directiveHasLink(dir, newName))
   ) {
     throw new Error(`Rename would create duplicate link: ${newName}`);
   }
@@ -270,18 +310,32 @@ export function renameLink(
   });
 
   const newDirectives: Directive[] = ledger.directives.map((dir) => {
-    if (dir.type === "transaction") {
-      const txn = dir.data;
-      const newLinks = txn.links.map((link) => {
-        if (link === oldName) {
-          changedCount++;
-          return newName;
-        }
-        return link;
-      });
-      return { ...dir, data: { ...txn, links: newLinks } };
+    switch (dir.type) {
+      case "transaction": {
+        const txn = dir.data;
+        const newLinks = txn.links.map((link) => {
+          if (link === oldName) {
+            changedCount++;
+            return newName;
+          }
+          return link;
+        });
+        return { ...dir, data: { ...txn, links: newLinks } };
+      }
+      case "note":
+      case "document": {
+        const newLinks = dir.links?.map((link) => {
+          if (link === oldName) {
+            changedCount++;
+            return newName;
+          }
+          return link;
+        });
+        return newLinks ? { ...dir, links: newLinks } : dir;
+      }
+      default:
+        return dir;
     }
-    return dir;
   });
 
   return {

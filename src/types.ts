@@ -119,6 +119,18 @@ export interface NoteDirective {
   date: string;
   account: string;
   comment: string;
+  tags?: string[];
+  links?: string[];
+}
+
+/** Document directive */
+export interface DocumentDirective {
+  type: "document";
+  date: string;
+  account: string;
+  path: string;
+  tags?: string[];
+  links?: string[];
 }
 
 /** Price directive */
@@ -141,6 +153,7 @@ export type Directive =
   | OptionDirective
   | IncludeDirective
   | NoteDirective
+  | DocumentDirective
   | PriceDirective
   | { type: "comment"; text: string };
 

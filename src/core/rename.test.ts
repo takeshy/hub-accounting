@@ -99,6 +99,27 @@ describe("renameAccount", () => {
     expect(openDir).toBeDefined();
   });
 
+  it("renames account in note and document directives", () => {
+    const ledger = createEmptyLedger("JPY");
+    ledger.directives.push(
+      { type: "note", date: "2024-01-01", account: "Assets:Cash", comment: "Memo" },
+      { type: "document", date: "2024-01-02", account: "Assets:Cash", path: "receipt.pdf" }
+    );
+    const result = renameAccount(ledger, "Assets:Cash", "Assets:PettyCash");
+    expect(result.ledger.directives).toContainEqual({
+      type: "note",
+      date: "2024-01-01",
+      account: "Assets:PettyCash",
+      comment: "Memo",
+    });
+    expect(result.ledger.directives).toContainEqual({
+      type: "document",
+      date: "2024-01-02",
+      account: "Assets:PettyCash",
+      path: "receipt.pdf",
+    });
+  });
+
   it("rejects renaming an account to an existing account", () => {
     const ledger = createEmptyLedger("JPY");
     expect(() => renameAccount(ledger, "Assets:Cash", "Assets:Bank")).toThrow(
@@ -192,6 +213,29 @@ describe("renameTag", () => {
     });
     expect(() => renameTag(ledger, "travel", "work")).toThrow(/duplicate tag/);
   });
+
+  it("renames tags in note and document directives", () => {
+    const ledger = createEmptyLedger("JPY");
+    ledger.directives.push(
+      { type: "note", date: "2024-01-01", account: "Assets:Cash", comment: "Memo", tags: ["review"] },
+      { type: "document", date: "2024-01-02", account: "Assets:Cash", path: "receipt.pdf", tags: ["review"] }
+    );
+    const result = renameTag(ledger, "review", "checked");
+    const note = result.ledger.directives.find((d) => d.type === "note" && d.comment === "Memo");
+    const document = result.ledger.directives.find((d) => d.type === "document" && d.path === "receipt.pdf");
+    expect(note?.type === "note" ? note.tags : undefined).toEqual(["checked"]);
+    expect(document?.type === "document" ? document.tags : undefined).toEqual(["checked"]);
+    expect(result.changedCount).toBe(2);
+  });
+
+  it("detects tag rename conflicts in note and document directives", () => {
+    const ledger = createEmptyLedger("JPY");
+    ledger.directives.push(
+      { type: "note", date: "2024-01-01", account: "Assets:Cash", comment: "Memo", tags: ["review"] },
+      { type: "document", date: "2024-01-02", account: "Assets:Cash", path: "receipt.pdf", tags: ["checked"] }
+    );
+    expect(() => renameTag(ledger, "review", "checked")).toThrow(/duplicate tag/);
+  });
 });
 
 describe("renameLink", () => {
@@ -227,6 +271,29 @@ describe("renameLink", () => {
       links: ["invoice-001", "invoice-002"],
     });
     expect(() => renameLink(ledger, "invoice-001", "invoice-002")).toThrow(/duplicate link/);
+  });
+
+  it("renames links in note and document directives", () => {
+    const ledger = createEmptyLedger("JPY");
+    ledger.directives.push(
+      { type: "note", date: "2024-01-01", account: "Assets:Cash", comment: "Memo", links: ["note-001"] },
+      { type: "document", date: "2024-01-02", account: "Assets:Cash", path: "receipt.pdf", links: ["note-001"] }
+    );
+    const result = renameLink(ledger, "note-001", "doc-001");
+    const note = result.ledger.directives.find((d) => d.type === "note" && d.comment === "Memo");
+    const document = result.ledger.directives.find((d) => d.type === "document" && d.path === "receipt.pdf");
+    expect(note?.type === "note" ? note.links : undefined).toEqual(["doc-001"]);
+    expect(document?.type === "document" ? document.links : undefined).toEqual(["doc-001"]);
+    expect(result.changedCount).toBe(2);
+  });
+
+  it("detects link rename conflicts in note and document directives", () => {
+    const ledger = createEmptyLedger("JPY");
+    ledger.directives.push(
+      { type: "note", date: "2024-01-01", account: "Assets:Cash", comment: "Memo", links: ["note-001"] },
+      { type: "document", date: "2024-01-02", account: "Assets:Cash", path: "receipt.pdf", links: ["doc-001"] }
+    );
+    expect(() => renameLink(ledger, "note-001", "doc-001")).toThrow(/duplicate link/);
   });
 });
 

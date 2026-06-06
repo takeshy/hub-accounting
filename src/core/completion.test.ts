@@ -94,6 +94,17 @@ describe("collectTags", () => {
     const candidates = collectTags(ledger);
     expect(candidates[0].label).toBe("frequent");
   });
+
+  it("collects tags from note and document directives", () => {
+    const ledger = createEmptyLedger("JPY");
+    ledger.directives.push(
+      { type: "note", date: "2024-01-01", account: "Assets:Cash", comment: "Memo", tags: ["review"] },
+      { type: "document", date: "2024-01-02", account: "Assets:Cash", path: "receipt.pdf", tags: ["review"] }
+    );
+    const candidates = collectTags(ledger);
+    const review = candidates.find((c) => c.label === "review");
+    expect(review?.count).toBe(2);
+  });
 });
 
 describe("collectLinks", () => {
@@ -113,6 +124,17 @@ describe("collectLinks", () => {
     const candidates = collectLinks(ledger);
     expect(candidates[0].label).toBe("invoice-001");
     expect(candidates[0].count).toBe(1);
+  });
+
+  it("collects links from note and document directives", () => {
+    const ledger = createEmptyLedger("JPY");
+    ledger.directives.push(
+      { type: "note", date: "2024-01-01", account: "Assets:Cash", comment: "Memo", links: ["note-001"] },
+      { type: "document", date: "2024-01-02", account: "Assets:Cash", path: "receipt.pdf", links: ["note-001"] }
+    );
+    const candidates = collectLinks(ledger);
+    const link = candidates.find((c) => c.label === "note-001");
+    expect(link?.count).toBe(2);
   });
 });
 

@@ -50,8 +50,12 @@ export function collectCurrencies(ledger: LedgerData): CompletionCandidate[] {
 export function collectTags(ledger: LedgerData): CompletionCandidate[] {
   const counts = new Map<string, number>();
 
-  for (const txn of ledger.transactions) {
-    for (const tag of txn.tags) {
+  for (const dir of ledger.directives) {
+    const tags =
+      dir.type === "transaction" ? dir.data.tags :
+      dir.type === "note" || dir.type === "document" ? dir.tags ?? [] :
+      [];
+    for (const tag of tags) {
       counts.set(tag, (counts.get(tag) || 0) + 1);
     }
   }
@@ -65,8 +69,12 @@ export function collectTags(ledger: LedgerData): CompletionCandidate[] {
 export function collectLinks(ledger: LedgerData): CompletionCandidate[] {
   const counts = new Map<string, number>();
 
-  for (const txn of ledger.transactions) {
-    for (const link of txn.links) {
+  for (const dir of ledger.directives) {
+    const links =
+      dir.type === "transaction" ? dir.data.links :
+      dir.type === "note" || dir.type === "document" ? dir.links ?? [] :
+      [];
+    for (const link of links) {
       counts.set(link, (counts.get(link) || 0) + 1);
     }
   }

@@ -100,8 +100,18 @@ function formatDirective(dir: Directive, decimalPlaces: number): string {
       return `${dir.date} pad ${dir.account} ${dir.padAccount}`;
     case "commodity":
       return `${dir.date} commodity ${dir.currency}`;
-    case "note":
-      return `${dir.date} note ${dir.account} "${dir.comment}"`;
+    case "note": {
+      let line = `${dir.date} note ${dir.account} "${dir.comment}"`;
+      if (dir.tags) for (const tag of dir.tags) line += ` #${tag}`;
+      if (dir.links) for (const link of dir.links) line += ` ^${link}`;
+      return line;
+    }
+    case "document": {
+      let line = `${dir.date} document ${dir.account} "${dir.path}"`;
+      if (dir.tags) for (const tag of dir.tags) line += ` #${tag}`;
+      if (dir.links) for (const link of dir.links) line += ` ^${link}`;
+      return line;
+    }
     case "price":
       return `${dir.date} price ${dir.currency} ${formatAmount(dir.amount, decimalPlaces)} ${dir.targetCurrency}`;
     case "transaction":

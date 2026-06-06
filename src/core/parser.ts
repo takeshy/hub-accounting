@@ -142,9 +142,45 @@ export function parse(text: string): LedgerData {
       }
 
       // Note directive
-      const noteMatch = rest.match(/^note\s+([\w:-]+)\s+"([^"]*)"/);
+      const noteMatch = rest.match(/^note\s+([\w:-]+)\s+"([^"]*)"(.*)$/);
       if (noteMatch) {
-        directives.push({ type: "note", date, account: noteMatch[1], comment: noteMatch[2] });
+        const tags: string[] = [];
+        const links: string[] = [];
+        const remainder = noteMatch[3];
+        const tagMatches = remainder.matchAll(/#([\w-]+)/g);
+        for (const m of tagMatches) tags.push(m[1]);
+        const linkMatches = remainder.matchAll(/\^([\w-]+)/g);
+        for (const m of linkMatches) links.push(m[1]);
+        directives.push({
+          type: "note",
+          date,
+          account: noteMatch[1],
+          comment: noteMatch[2],
+          ...(tags.length > 0 ? { tags } : {}),
+          ...(links.length > 0 ? { links } : {}),
+        });
+        i++;
+        continue;
+      }
+
+      // Document directive
+      const documentMatch = rest.match(/^document\s+([\w:-]+)\s+"([^"]*)"(.*)$/);
+      if (documentMatch) {
+        const tags: string[] = [];
+        const links: string[] = [];
+        const remainder = documentMatch[3];
+        const tagMatches = remainder.matchAll(/#([\w-]+)/g);
+        for (const m of tagMatches) tags.push(m[1]);
+        const linkMatches = remainder.matchAll(/\^([\w-]+)/g);
+        for (const m of linkMatches) links.push(m[1]);
+        directives.push({
+          type: "document",
+          date,
+          account: documentMatch[1],
+          path: documentMatch[2],
+          ...(tags.length > 0 ? { tags } : {}),
+          ...(links.length > 0 ? { links } : {}),
+        });
         i++;
         continue;
       }

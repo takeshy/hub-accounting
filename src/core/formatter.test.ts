@@ -181,6 +181,21 @@ describe("formatter", () => {
     expect(format(parse(text), 0)).toBe(text + "\n");
   });
 
+  it("round-trips note directive with tags and links", () => {
+    const text = `2024-01-15 note Assets:Cash "Important note" #review ^note-001`;
+    expect(format(parse(text), 0)).toBe(text + "\n");
+  });
+
+  it("round-trips document directive", () => {
+    const text = `2024-01-15 document Assets:Cash "receipt.pdf"`;
+    expect(format(parse(text), 0)).toBe(text + "\n");
+  });
+
+  it("round-trips document directive with tags and links", () => {
+    const text = `2024-01-15 document Assets:Bank:Checking "statement.pdf" #bank ^statement-2024`;
+    expect(format(parse(text), 0)).toBe(text + "\n");
+  });
+
   it("round-trips price directive", () => {
     const text = `2024-01-15 price USD 150.50 JPY`;
     expect(format(parse(text), 2)).toBe(text + "\n");
