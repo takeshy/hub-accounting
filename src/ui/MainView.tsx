@@ -5,7 +5,7 @@
 import * as React from "react";
 import { t, tAccount, setLanguage } from "../i18n";
 import { useStore, setState, saveLedger as storeSaveLedger } from "../store";
-import { ReportType, LedgerData, AccountBalance } from "../types";
+import { ReportType, LedgerData, AccountBalance, TransactionMetadataEntry } from "../types";
 import { removeTransaction, refreshErrors } from "../core/ledger";
 import { formatNum, currencyLabel } from "../format";
 
@@ -204,6 +204,10 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
   const store = useStore();
   const { filterDateFrom, filterDateTo, filterQuery, filterAccount, settings } = store;
 
+  function getTxnMeta(metadata: TransactionMetadataEntry[] | undefined, key: string): string {
+    return metadata?.find((m) => m.entry[0] === key)?.entry[1] ?? "";
+  }
+
   let txns = [...ledger.transactions];
 
   // Apply filters
@@ -219,6 +223,8 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
       (t) =>
         t.narration.toLowerCase().includes(q) ||
         (t.payee && t.payee.toLowerCase().includes(q)) ||
+        getTxnMeta(t.metadata, "note").toLowerCase().includes(q) ||
+        getTxnMeta(t.metadata, "document").toLowerCase().includes(q) ||
         t.postings.some((p) => p.account.toLowerCase().includes(q))
     );
   }
@@ -247,7 +253,10 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
           {t("txn.empty")}
         </p>
       )}
-      {txns.map((txn) => (
+      {txns.map((txn) => {
+        const note = getTxnMeta(txn.metadata, "note");
+        const document = getTxnMeta(txn.metadata, "document");
+        return (
         <div key={txn.id} className={`accounting-txn-card ${txn.flag === "!" ? "accounting-txn-pending" : ""}`}>
           <div className="accounting-txn-header">
             <span className="accounting-txn-date">{txn.date}</span>
@@ -296,8 +305,15 @@ function JournalView({ ledger, api }: { ledger: LedgerData; api: PluginAPI }) {
               ))}
             </div>
           )}
+          {(note || document) && (
+            <div className="accounting-txn-metadata">
+              {note && <div className="accounting-txn-meta-line">{t("txn.note")}: {note}</div>}
+              {document && <div className="accounting-txn-meta-line">{t("txn.document")}: {document}</div>}
+            </div>
+          )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -8,9 +8,11 @@ import {
   hasWarnings,
   getDiagnosticCounts,
   toDiagnostic,
+  formatLedgerErrorMessage,
 } from "./diagnostics";
 import { createEmptyLedger, addTransaction } from "./ledger";
 import { LedgerData, LedgerError } from "../types";
+import { setLanguage } from "../i18n";
 
 describe("toDiagnostic", () => {
   it("converts LedgerError to Diagnostic", () => {
@@ -78,6 +80,25 @@ describe("formatDiagnostic", () => {
     const formatted = formatDiagnostic(diag);
     expect(formatted).not.toContain("Line");
     expect(formatted).toContain("[WARNING]");
+  });
+});
+
+describe("formatLedgerErrorMessage", () => {
+  it("localizes balance assertion errors and account names", () => {
+    setLanguage("ja");
+    const error: LedgerError = {
+      message: "Balance assertion failed for Assets:Cash on 2024-01-15: expected 1000 JPY, got 0 JPY",
+      messageKey: "error.balanceAssertion",
+      messageArgs: ["Assets:Cash", "2024-01-15", 1000, "JPY", 0],
+      severity: "error",
+    };
+    const message = formatLedgerErrorMessage(error);
+    expect(message).toContain("2024-01-15");
+    expect(message).toContain("現金");
+    expect(message).toContain("期待値 1,000 JPY");
+    expect(message).toContain("実残高 0 JPY");
+    expect(message).not.toContain("Balance assertion failed");
+    setLanguage("en");
   });
 });
 

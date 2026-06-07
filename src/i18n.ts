@@ -40,6 +40,10 @@ const translations: Record<string, Record<string, string>> = {
     "txn.addPosting": "Add Posting",
     "txn.balanced": "Balanced",
     "txn.unbalanced": "Unbalanced",
+    "txn.recent": "Recent Transactions",
+    "txn.note": "Memo",
+    "txn.document": "Attachment",
+    "txn.documentPlaceholder": "receipt.pdf or file path",
 
     // Reports
     "report.dashboard": "Dashboard",
@@ -66,6 +70,9 @@ const translations: Record<string, Record<string, string>> = {
 
     // Balance assertions
     "balance.new": "Add Balance Check",
+    "balance.edit": "Edit Balance Check",
+    "balance.list": "Balance Checks",
+    "balance.empty": "No balance checks",
 
     // File
     "file.new": "New Ledger",
@@ -246,6 +253,7 @@ const translations: Record<string, Record<string, string>> = {
     "error.accountClosed": "Account is closed",
     "error.duplicateAccount": "Account already exists",
     "error.parseError": "Parse error",
+    "error.balanceAssertion": "Balance check failed for {0} on {1}: expected {2} {3}, actual {4} {3}",
 
     // Rename
     "rename": "Rename",
@@ -269,9 +277,15 @@ const translations: Record<string, Record<string, string>> = {
     "hover.noPrice": "No price recorded",
 
     // Diagnostics
+    "diagnostics.title": "Diagnostics",
     "diagnostics.errors": "{0} error(s)",
     "diagnostics.warnings": "{0} warning(s)",
     "diagnostics.noIssues": "No issues",
+    "diagnostics.more": "...and {0} more",
+    "diagnostics.line": "Line {0}:",
+    "diagnostics.severity.error": "ERROR",
+    "diagnostics.severity.warning": "WARNING",
+    "diagnostics.severity.info": "INFO",
   },
   ja: {
     // General
@@ -314,6 +328,10 @@ const translations: Record<string, Record<string, string>> = {
     "txn.addPosting": "仕訳追加",
     "txn.balanced": "貸借一致",
     "txn.unbalanced": "貸借不一致",
+    "txn.recent": "直近の仕訳",
+    "txn.note": "メモ",
+    "txn.document": "添付ファイル",
+    "txn.documentPlaceholder": "receipt.pdf またはファイルパス",
 
     // Reports
     "report.dashboard": "ダッシュボード",
@@ -340,6 +358,9 @@ const translations: Record<string, Record<string, string>> = {
 
     // Balance assertions
     "balance.new": "残高検証を追加",
+    "balance.edit": "残高検証を編集",
+    "balance.list": "残高検証",
+    "balance.empty": "残高検証はありません",
 
     // File
     "file.new": "新規帳簿",
@@ -530,6 +551,7 @@ const translations: Record<string, Record<string, string>> = {
     "error.accountClosed": "勘定科目は閉鎖されています",
     "error.duplicateAccount": "勘定科目は既に存在します",
     "error.parseError": "解析エラー",
+    "error.balanceAssertion": "{1} の {0} 残高チェックに失敗: 期待値 {2} {3}、実残高 {4} {3}",
 
     // Rename
     "rename": "名前変更",
@@ -553,9 +575,15 @@ const translations: Record<string, Record<string, string>> = {
     "hover.noPrice": "価格記録なし",
 
     // Diagnostics
+    "diagnostics.title": "診断",
     "diagnostics.errors": "{0}件のエラー",
     "diagnostics.warnings": "{0}件の警告",
     "diagnostics.noIssues": "問題なし",
+    "diagnostics.more": "ほか{0}件",
+    "diagnostics.line": "{0}行目:",
+    "diagnostics.severity.error": "エラー",
+    "diagnostics.severity.warning": "警告",
+    "diagnostics.severity.info": "情報",
   },
 };
 
@@ -573,7 +601,7 @@ export function t(key: string): string {
 export function tFormat(key: string, ...args: (string | number)[]): string {
   let result = t(key);
   args.forEach((arg, i) => {
-    result = result.replace(`{${i}}`, String(arg));
+    result = result.split(`{${i}}`).join(String(arg));
   });
   return result;
 }

@@ -208,6 +208,8 @@ export function validate(ledger: LedgerData): LedgerError[] {
       if (Math.abs(actual - dir.amount) > 0.005) {
         errors.push({
           message: `Balance assertion failed for ${dir.account} on ${dir.date}: expected ${dir.amount} ${dir.currency}, got ${actual} ${dir.currency}`,
+          messageKey: "error.balanceAssertion",
+          messageArgs: [dir.account, dir.date, dir.amount, dir.currency, actual],
           severity: "error",
         });
       }

@@ -176,6 +176,8 @@ export interface LedgerError {
   line?: number;
   message: string;
   severity: "error" | "warning";
+  messageKey?: string;
+  messageArgs?: (string | number)[];
 }
 
 /** Account balance at a point in time */

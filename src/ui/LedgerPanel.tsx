@@ -13,12 +13,15 @@ import {
   ACCOUNT_TYPES,
   LedgerData,
   AccountingSettings,
+  LedgerError,
   DEFAULT_SETTINGS,
   TaxCategory,
+  TransactionMetadataEntry,
   JournalTemplate,
   TemplatePosting,
   TAX_CATEGORIES,
 } from "../types";
+import { formatNum } from "../format";
 import { parse } from "../core/parser";
 import { format } from "../core/formatter";
 import {
@@ -37,10 +40,10 @@ import { CsvImportDialog } from "./CsvImportDialog";
 import { getDefaultTemplates, buildPostings, parseArgs } from "../core/templates";
 import { autoBalance } from "../core/ledger";
 import { AutocompleteInput } from "./AutocompleteInput";
-import { DiagnosticsBadge } from "./DiagnosticsBadge";
 import { RenameDialog } from "./RenameDialog";
 import { collectPayees, collectNarrations } from "../core/completion";
 import { RenameTarget } from "../core/rename";
+import { formatLedgerErrorMessage } from "../core/diagnostics";
 
 interface PluginAPI {
   storage: {
@@ -94,6 +97,8 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [txnPayee, setTxnPayee] = React.useState("");
   const [txnNarration, setTxnNarration] = React.useState("");
   const [txnFlag, setTxnFlag] = React.useState<"*" | "!">("*");
+  const [txnNote, setTxnNote] = React.useState("");
+  const [txnDocument, setTxnDocument] = React.useState("");
 
   interface PostingEntry { account: string; amount: number | null; taxCategory?: TaxCategory }
   const emptyEntry = (): PostingEntry => ({ account: "", amount: null });
@@ -101,6 +106,8 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [creditEntries, setCreditEntries] = React.useState<PostingEntry[]>([emptyEntry()]);
   const [showAllAccounts, setShowAllAccounts] = React.useState(false);
   const [showImport, setShowImport] = React.useState(false);
+  const [showAccountsModal, setShowAccountsModal] = React.useState(false);
+  const [showBalancesModal, setShowBalancesModal] = React.useState(false);
 
   // AI modal state
   const [showAiModal, setShowAiModal] = React.useState(false);
@@ -153,6 +160,8 @@ export function LedgerPanel(props: LedgerPanelProps) {
     setTxnPayee(txn.payee || "");
     setTxnNarration(txn.narration);
     setTxnFlag(txn.flag);
+    setTxnNote(getTransactionMetadata(txn.metadata, "note"));
+    setTxnDocument(getTransactionMetadata(txn.metadata, "document"));
 
     const debits: PostingEntry[] = [];
     const credits: PostingEntry[] = [];
@@ -179,6 +188,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
   const [balanceAccount, setBalanceAccount] = React.useState("");
   const [balanceAmount, setBalanceAmount] = React.useState("");
   const [balanceCurrency, setBalanceCurrency] = React.useState(settings.defaultCurrency);
+  const [editingBalanceIndex, setEditingBalanceIndex] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     setBalanceCurrency(settings.defaultCurrency);
@@ -248,6 +258,29 @@ export function LedgerPanel(props: LedgerPanelProps) {
   }, []);
 
   const ledger = store.ledger;
+
+  function getTransactionMetadata(metadata: TransactionMetadataEntry[] | undefined, key: string): string {
+    return metadata?.find((m) => m.entry[0] === key)?.entry[1] ?? "";
+  }
+
+  function mergeTransactionMetadata(
+    metadata: TransactionMetadataEntry[] | undefined,
+    note: string,
+    document: string
+  ): TransactionMetadataEntry[] | undefined {
+    const next = (metadata ?? []).filter((m) => m.entry[0] !== "note" && m.entry[0] !== "document");
+    if (note.trim()) next.unshift({ entry: ["note", note.trim()], postingIndex: 0 });
+    if (document.trim()) next.unshift({ entry: ["document", document.trim()], postingIndex: 0 });
+    return next.length > 0 ? next : undefined;
+  }
+
+  const openGeneralLedger = React.useCallback((accountName: string) => {
+    const fy = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
+    setState({ activeReport: "general_ledger", filterAccount: accountName, filterDateFrom: fy.start, filterDateTo: fy.end, filterQuery: "" });
+    if (fileIdRef.current) {
+      api.selectFile?.(fileIdRef.current, `${currentFiscalYear}.beancount`);
+    }
+  }, [api, currentFiscalYear, settings.fiscalYearStartMonth]);
 
   async function handleNewLedger() {
     const template = settings.defaultCurrency === "JPY" ? "japan_sole_proprietor" : "default";
@@ -351,6 +384,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
       postings,
       tags: [],
       links: [],
+      metadata: mergeTransactionMetadata(editingId ? ledger.transactions.find((t) => t.id === editingId)?.metadata : undefined, txnNote, txnDocument),
     };
 
     if (!isBalanced(txn)) {
@@ -371,6 +405,8 @@ export function LedgerPanel(props: LedgerPanelProps) {
     setEditingId(null);
     setTxnPayee("");
     setTxnNarration("");
+    setTxnNote("");
+    setTxnDocument("");
     setDebitEntries([emptyEntry()]);
     setCreditEntries([emptyEntry()]);
     setView("main");
@@ -462,16 +498,57 @@ export function LedgerPanel(props: LedgerPanelProps) {
     const amount = Number(balanceAmount);
     if (!Number.isFinite(amount)) return;
 
-    const newLedger = addBalanceDirective(ledger, {
+    const balanceDirective = {
+      type: "balance" as const,
       date: balanceDate,
       account: balanceAccount,
       amount,
       currency: balanceCurrency || settings.defaultCurrency,
-    });
+    };
+    const newLedger = editingBalanceIndex === null
+      ? addBalanceDirective(ledger, balanceDirective)
+      : refreshErrors({
+        ...ledger,
+        directives: ledger.directives.map((dir, i) => i === editingBalanceIndex ? balanceDirective : dir),
+      });
     setState({ ledger: newLedger });
     saveLedger(newLedger);
     setBalanceAmount("");
+    setEditingBalanceIndex(null);
     setView("main");
+  }
+
+  function handleEditBalanceFromError(error: LedgerError) {
+    if (!ledger || !error.messageArgs) return;
+    const [account, date, , currency] = error.messageArgs;
+    const index = ledger.directives.findIndex((dir) =>
+      dir.type === "balance" &&
+      dir.account === String(account) &&
+      dir.date === String(date) &&
+      dir.currency === String(currency)
+    );
+    if (index === -1) return;
+    const dir = ledger.directives[index];
+    if (dir.type !== "balance") return;
+    setEditingBalanceIndex(index);
+    setBalanceDate(dir.date);
+    setBalanceAccount(dir.account);
+    setBalanceAmount(String(dir.amount));
+    setBalanceCurrency(dir.currency);
+    setView("addBalance");
+  }
+
+  function startEditBalanceDirective(index: number) {
+    if (!ledger) return;
+    const dir = ledger.directives[index];
+    if (dir.type !== "balance") return;
+    setShowBalancesModal(false);
+    setEditingBalanceIndex(index);
+    setBalanceDate(dir.date);
+    setBalanceAccount(dir.account);
+    setBalanceAmount(String(dir.amount));
+    setBalanceCurrency(dir.currency);
+    setView("addBalance");
   }
 
   async function handleExportFreeeCSV() {
@@ -900,6 +977,22 @@ export function LedgerPanel(props: LedgerPanelProps) {
             placeholder={t("txn.narration")}
           />
 
+          <label>{t("txn.note")}</label>
+          <input
+            type="text"
+            value={txnNote}
+            onChange={(e) => setTxnNote(e.target.value)}
+            placeholder={t("txn.note")}
+          />
+
+          <label>{t("txn.document")}</label>
+          <input
+            type="text"
+            value={txnDocument}
+            onChange={(e) => setTxnDocument(e.target.value)}
+            placeholder={t("txn.documentPlaceholder")}
+          />
+
           <label>
             <input
               type="checkbox"
@@ -926,7 +1019,15 @@ export function LedgerPanel(props: LedgerPanelProps) {
           <button className="accounting-btn accounting-btn-primary" onClick={handleSubmitTransaction}>
             {t("save")}
           </button>
-          <button className="accounting-btn" onClick={() => { setEditingId(null); setView("main"); }}>
+          <button
+            className="accounting-btn"
+            onClick={() => {
+              setEditingId(null);
+              setTxnNote("");
+              setTxnDocument("");
+              setView("main");
+            }}
+          >
             {t("cancel")}
           </button>
         </div>
@@ -973,7 +1074,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
   if (view === "addBalance") {
     return (
       <div className="accounting-panel">
-        <h3>{t("balance.new")}</h3>
+        <h3>{editingBalanceIndex === null ? t("balance.new") : t("balance.edit")}</h3>
         <div className="accounting-form">
           <label>{t("date")}</label>
           <input type="date" value={balanceDate} onChange={(e) => setBalanceDate(e.target.value)} />
@@ -1008,7 +1109,7 @@ export function LedgerPanel(props: LedgerPanelProps) {
           <button className="accounting-btn accounting-btn-primary" onClick={handleSubmitBalance}>
             {t("save")}
           </button>
-          <button className="accounting-btn" onClick={() => setView("main")}>
+          <button className="accounting-btn" onClick={() => { setEditingBalanceIndex(null); setView("main"); }}>
             {t("cancel")}
           </button>
         </div>
@@ -1168,11 +1269,17 @@ export function LedgerPanel(props: LedgerPanelProps) {
     }
   };
 
+  const recentTransactions = [...ledger.transactions]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+    .slice(0, 5);
+  const balanceDirectives = ledger.directives
+    .map((dir, index) => ({ dir, index }))
+    .filter((item): item is { dir: Extract<typeof item.dir, { type: "balance" }>; index: number } => item.dir.type === "balance");
+
   return (
     <div className="accounting-panel">
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 8px" }}>
         <h3 style={{ margin: 0 }}>{t("plugin.name")}</h3>
-        <DiagnosticsBadge ledger={ledger} />
         <button
           className="accounting-btn accounting-btn-sm"
           onClick={handleOpenDashboard}
@@ -1211,7 +1318,17 @@ export function LedgerPanel(props: LedgerPanelProps) {
         <button className="accounting-btn" onClick={() => setView("addAccount")}>
           + {t("accounts.open")}
         </button>
-        <button className="accounting-btn" onClick={() => setView("addBalance")}>
+        <button
+          className="accounting-btn"
+          onClick={() => {
+            setEditingBalanceIndex(null);
+            setBalanceDate(new Date().toISOString().slice(0, 10));
+            setBalanceAccount("");
+            setBalanceAmount("");
+            setBalanceCurrency(settings.defaultCurrency);
+            setView("addBalance");
+          }}
+        >
           + {t("balance.new")}
         </button>
         <button className="accounting-btn" onClick={() => setView("templates")}>
@@ -1314,57 +1431,153 @@ export function LedgerPanel(props: LedgerPanelProps) {
       )}
 
       <div className="accounting-stats">
-        <div className="accounting-stat">
+        <button
+          type="button"
+          className="accounting-stat accounting-stat-button"
+          onClick={() => setShowAccountsModal(true)}
+        >
           <span className="accounting-stat-label">{t("accounts.list")}</span>
           <span className="accounting-stat-value">{ledger.accounts.length}</span>
-        </div>
+        </button>
         <div className="accounting-stat">
           <span className="accounting-stat-label">{t("report.journal")}</span>
           <span className="accounting-stat-value">{ledger.transactions.length}</span>
         </div>
+        <button
+          type="button"
+          className="accounting-stat accounting-stat-button"
+          onClick={() => setShowBalancesModal(true)}
+        >
+          <span className="accounting-stat-label">{t("balance.list")}</span>
+          <span className="accounting-stat-value">{balanceDirectives.length}</span>
+        </button>
       </div>
 
       {ledger.errors.length > 0 && (
         <div className="accounting-errors">
           {ledger.errors.slice(0, 5).map((e, i) => (
             <div key={i} className={`accounting-error accounting-error-${e.severity}`}>
-              {e.message}
+              <span>{formatLedgerErrorMessage(e)}</span>
+              {e.messageKey === "error.balanceAssertion" && (
+                <button
+                  type="button"
+                  className="accounting-error-action"
+                  onClick={() => handleEditBalanceFromError(e)}
+                >
+                  {t("edit")}
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      <h4>{t("accounts.list")}</h4>
-      <div className="accounting-account-list">
-        {ledger.accounts.map((a) => (
-          <div
-            key={a.name}
-            className="accounting-account-item accounting-account-item-clickable"
-            onClick={() => {
-              const fy = getFiscalYearRange(currentFiscalYear, settings.fiscalYearStartMonth);
-              setState({ activeReport: "general_ledger", filterAccount: a.name, filterDateFrom: fy.start, filterDateTo: fy.end, filterQuery: "" });
-              if (fileIdRef.current) {
-                api.selectFile?.(fileIdRef.current, `${currentFiscalYear}.beancount`);
-              }
-            }}
-          >
-            <span className={`accounting-account-type accounting-type-${a.type.toLowerCase()}`}>
-              {t(`account.${a.type.toLowerCase()}.short`)}
-            </span>
-            <span className="accounting-account-name">{tAccount(a.name)}</span>
+      <h4>{t("txn.recent")}</h4>
+      <div className="accounting-recent-txn-list">
+        {recentTransactions.length === 0 ? (
+          <div className="accounting-empty-state">{t("txn.empty")}</div>
+        ) : recentTransactions.map((txn) => {
+          const amountPosting = txn.postings.find((p) => p.amount !== null && p.amount > 0)
+            || txn.postings.find((p) => p.amount !== null);
+          const amount = amountPosting?.amount ?? null;
+          const accountSummary = txn.postings
+            .slice(0, 2)
+            .map((p) => tAccount(p.account))
+            .join(" / ");
+          return (
             <button
-              className="accounting-account-rename-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setRenameTarget({ target: "account", oldName: a.name });
-              }}
-              title={t("rename")}
+              key={txn.id}
+              type="button"
+              className="accounting-recent-txn-item"
+              onClick={() => setState({ editingTxnId: txn.id })}
             >
-              ✎
+              <span className="accounting-recent-txn-date">{txn.date}</span>
+              <span className="accounting-recent-txn-main">
+                {txn.payee && <span className="accounting-recent-txn-payee">{txn.payee}</span>}
+                <span className="accounting-recent-txn-narration">{txn.narration}</span>
+                {accountSummary && <span className="accounting-recent-txn-accounts">{accountSummary}</span>}
+              </span>
+              {amount !== null && amountPosting && (
+                <span className="accounting-recent-txn-amount">
+                  {formatNum(Math.abs(amount), settings.decimalPlaces)} {amountPosting.currency}
+                </span>
+              )}
             </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {showAccountsModal && (
+        <div className="accounting-dialog-overlay" onClick={() => setShowAccountsModal(false)}>
+          <div className="accounting-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="accounting-dialog-header">
+              <h3>{t("accounts.list")}</h3>
+              <button className="accounting-btn accounting-btn-sm" onClick={() => setShowAccountsModal(false)}>×</button>
+            </div>
+            <div className="accounting-dialog-body">
+              <div className="accounting-account-list accounting-account-list-modal">
+                {ledger.accounts.map((a) => (
+                  <div
+                    key={a.name}
+                    className="accounting-account-item accounting-account-item-clickable"
+                    onClick={() => {
+                      openGeneralLedger(a.name);
+                      setShowAccountsModal(false);
+                    }}
+                  >
+                    <span className={`accounting-account-type accounting-type-${a.type.toLowerCase()}`}>
+                      {t(`account.${a.type.toLowerCase()}.short`)}
+                    </span>
+                    <span className="accounting-account-name">{tAccount(a.name)}</span>
+                    <button
+                      className="accounting-account-rename-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowAccountsModal(false);
+                        setRenameTarget({ target: "account", oldName: a.name });
+                      }}
+                      title={t("rename")}
+                    >
+                      ✎
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBalancesModal && (
+        <div className="accounting-dialog-overlay" onClick={() => setShowBalancesModal(false)}>
+          <div className="accounting-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <div className="accounting-dialog-header">
+              <h3>{t("balance.list")}</h3>
+              <button className="accounting-btn accounting-btn-sm" onClick={() => setShowBalancesModal(false)}>×</button>
+            </div>
+            <div className="accounting-dialog-body">
+              <div className="accounting-balance-list">
+                {balanceDirectives.length === 0 ? (
+                  <div className="accounting-empty-state">{t("balance.empty")}</div>
+                ) : balanceDirectives.map(({ dir, index }) => (
+                  <button
+                    key={`${dir.date}:${dir.account}:${dir.currency}:${index}`}
+                    type="button"
+                    className="accounting-balance-item"
+                    onClick={() => startEditBalanceDirective(index)}
+                  >
+                    <span className="accounting-balance-date">{dir.date}</span>
+                    <span className="accounting-balance-account">{tAccount(dir.account)}</span>
+                    <span className="accounting-balance-amount">
+                      {formatNum(dir.amount, settings.decimalPlaces)} {dir.currency}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {renameTarget && (
         <RenameDialog

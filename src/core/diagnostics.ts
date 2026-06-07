@@ -4,7 +4,7 @@
  */
 
 import { LedgerData, LedgerError } from "../types";
-import { validate } from "./ledger";
+import { t, tAccount, tFormat } from "../i18n";
 
 /** Diagnostic severity */
 export type DiagnosticSeverity = "error" | "warning" | "info";
@@ -27,11 +27,29 @@ export interface GroupedDiagnostics {
 /** Convert LedgerError to Diagnostic */
 export function toDiagnostic(error: LedgerError): Diagnostic {
   return {
-    message: error.message,
+    message: formatLedgerErrorMessage(error),
     severity: error.severity === "error" ? "error" : "warning",
     line: error.line,
     source: "beancount",
   };
+}
+
+export function formatLedgerErrorMessage(error: LedgerError): string {
+  if (error.messageKey === "error.balanceAssertion" && error.messageArgs) {
+    const [account, date, expected, currency, actual] = error.messageArgs;
+    return tFormat(
+      "error.balanceAssertion",
+      tAccount(String(account)),
+      String(date),
+      Number(expected).toLocaleString(),
+      String(currency),
+      Number(actual).toLocaleString()
+    );
+  }
+  if (error.messageKey) {
+    return tFormat(error.messageKey, ...(error.messageArgs ?? []));
+  }
+  return error.message;
 }
 
 /** Get all diagnostics from a ledger (parse errors + validation errors) */
@@ -66,9 +84,9 @@ export function groupDiagnostics(diagnostics: Diagnostic[]): GroupedDiagnostics 
 export function formatDiagnostic(d: Diagnostic): string {
   const parts: string[] = [];
   if (d.line !== undefined) {
-    parts.push(`Line ${d.line}:`);
+    parts.push(tFormat("diagnostics.line", d.line));
   }
-  parts.push(`[${d.severity.toUpperCase()}]`);
+  parts.push(`[${t(`diagnostics.severity.${d.severity}`)}]`);
   parts.push(d.message);
   return parts.join(" ");
 }
