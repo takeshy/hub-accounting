@@ -1,0 +1,20 @@
+--- a/main.js
++++ b/main.js
+@@ -4896,7 +4896,7 @@
+   return { beancount: "text/plain", bean: "text/plain", ledger: "text/plain", csv: "text/csv" }[extension ?? ""] ?? "text/plain";
+ }
+ function adaptPluginAPI(input) {
+-  if (true) return input;
++  if (false) return input;
+   const api = input;
+   const files = api.projectFiles;
+   if (!files) throw new Error("Accounting requires GemiHub Desktop 0.2.0 or newer.");
+@@ -4925,7 +4925,7 @@
+     }
+   });
+ }
+-var accountingMainViewLocation = false ? "sidebar" : "main";
++var accountingMainViewLocation = true ? "sidebar" : "main";
+ 
+ // src/main.ts
+ var AccountingPlugin = class {

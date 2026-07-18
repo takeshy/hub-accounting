@@ -11,6 +11,7 @@ import { MainView } from "./ui/MainView";
 import { JournalTemplate } from "./types";
 import { getDefaultTemplates } from "./core/templates";
 import { setState } from "./store";
+import { adaptPluginAPI, accountingMainViewLocation } from "./host";
 
 interface PluginAPI {
   registerView(view: {
@@ -37,7 +38,8 @@ interface PluginAPI {
 }
 
 class AccountingPlugin {
-  onload(api: PluginAPI): void {
+  onload(hostAPI: PluginAPI): void {
+    const api = adaptPluginAPI(hostAPI);
     api.registerView({
       id: "accounting",
       name: "Accounting",
@@ -48,7 +50,7 @@ class AccountingPlugin {
     api.registerView({
       id: "accounting-main",
       name: "Accounting",
-      location: "main",
+      location: accountingMainViewLocation,
       extensions: [".beancount", ".bean", ".ledger"],
       component: MainView,
     });

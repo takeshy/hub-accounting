@@ -1,11 +1,14 @@
 {
   "id": "accounting",
   "name": "Accounting - Double-Entry Bookkeeping",
-  "version": "0.3.2",
-  "minAppVersion": "1.0.0",
+  "version": "0.3.3",
+  "minAppVersion": "0.2.0",
   "description": "Beancount-compatible double-entry bookkeeping. Manage accounts, record transactions, and generate financial reports (balance sheet, income statement, trial balance).",
   "author": "takeshy",
   "assets": [],
+  "hostPatches": {
+    "gemihub-desktop": ["patches/gemihub-desktop.patch"]
+  },
   "permissions": [
     "storage",
     "drive",

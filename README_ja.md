@@ -2,7 +2,7 @@
 
 ![Accounting](docs/accounting.png)
 
-Beancount互換の複式簿記を行う [GemiHub](https://github.com/takeshy/gemihub) プラグインです。勘定科目の管理、取引の記録、財務レポートの生成をプレーンテキストで行えます。
+Beancount互換の複式簿記を行う [GemiHub](https://github.com/takeshy/gemihub)／GemiHub Desktop共通プラグインです。勘定科目の管理、取引の記録、財務レポートの生成をプレーンテキストで行えます。
 
 [English](README.md)
 
@@ -21,9 +21,11 @@ Beancount互換の複式簿記を行う [GemiHub](https://github.com/takeshy/gem
 
 ## インストール
 
-1. GemiHub の **Settings > Plugins** を開く
+1. GemiHub の **Settings > Plugins**、またはGemiHub Desktop 0.2.0以降のPlugin managerを開く
 2. `takeshy/hub-accounting` を入力
 3. **Install** をクリック
+
+両hostが同じGitHub Releaseを使用します。GemiHubは`main.js`を直接読み込み、GemiHub Desktopは`manifest.json`で宣言されたrepository管理の`patches/gemihub-desktop.patch`を適用します（GitHub Releaseではbasenameがasset名になります）。Desktopでは帳簿をactive projectへ保存し、レポート画面を2つ目のsidebar tabとして表示します。Google Sheets出力はhostが任意のSheets APIを提供する場合だけ利用できます。
 
 ## 使い方
 
