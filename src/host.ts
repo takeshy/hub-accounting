@@ -23,7 +23,7 @@ export function adaptPluginAPI<T>(input: T): T {
   if (!__GEMIHUB_DESKTOP__) return input;
   const api = input as T & DesktopPluginAPI;
   const files = api.projectFiles;
-  if (!files) throw new Error("Accounting requires GemiHub Desktop 0.2.0 or newer.");
+  if (!files) throw new Error("Accounting requires GemiHub Desktop 0.8.1 or newer.");
   const selectFile = api.selectFile?.bind(api);
   return Object.assign(api, {
     drive: {

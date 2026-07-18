@@ -21,7 +21,7 @@ A shared [GemiHub](https://github.com/takeshy/gemihub) and GemiHub Desktop plugi
 
 ## Installation
 
-1. Go to **Settings > Plugins** in GemiHub, or open the Plugin manager in GemiHub Desktop 0.2.0+
+1. Go to **Settings > Plugins** in GemiHub, or open the Plugin manager in GemiHub Desktop 0.8.1+
 2. Enter `takeshy/hub-accounting`
 3. Click **Install**
 

@@ -21,7 +21,7 @@ Beancount互換の複式簿記を行う [GemiHub](https://github.com/takeshy/gem
 
 ## インストール
 
-1. GemiHub の **Settings > Plugins**、またはGemiHub Desktop 0.2.0以降のPlugin managerを開く
+1. GemiHub の **Settings > Plugins**、またはGemiHub Desktop 0.8.1以降のPlugin managerを開く
 2. `takeshy/hub-accounting` を入力
 3. **Install** をクリック
 
