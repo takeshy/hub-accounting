@@ -25,7 +25,7 @@ A shared [GemiHub](https://github.com/takeshy/gemihub) and GemiHub Desktop plugi
 2. Enter `takeshy/hub-accounting`
 3. Click **Install**
 
-The same GitHub Release is used by both hosts. GemiHub loads `main.js` directly; GemiHub Desktop applies the repository-owned `patches/gemihub-desktop.patch` declared in `manifest.json` (GitHub publishes its basename as the release asset). Desktop stores ledgers in the active project and exposes the report view as a second sidebar tab. Google Sheets export remains available only when the host provides the optional Sheets API.
+The same GitHub Release is used by both hosts. GemiHub loads `main.js` directly; GemiHub Desktop applies the repository-owned `patches/gemihub-desktop.patch` declared in `manifest.json` (GitHub publishes its basename as the release asset). Desktop stores ledgers in the active Workspace and exposes the report view as a second sidebar tab. Google Sheets export remains available only when the host provides the optional Sheets API.
 
 ## Usage
 

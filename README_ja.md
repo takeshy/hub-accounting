@@ -25,7 +25,7 @@ Beancount互換の複式簿記を行う [GemiHub](https://github.com/takeshy/gem
 2. `takeshy/hub-accounting` を入力
 3. **Install** をクリック
 
-両hostが同じGitHub Releaseを使用します。GemiHubは`main.js`を直接読み込み、GemiHub Desktopは`manifest.json`で宣言されたrepository管理の`patches/gemihub-desktop.patch`を適用します（GitHub Releaseではbasenameがasset名になります）。Desktopでは帳簿をactive projectへ保存し、レポート画面を2つ目のsidebar tabとして表示します。Google Sheets出力はhostが任意のSheets APIを提供する場合だけ利用できます。
+両hostが同じGitHub Releaseを使用します。GemiHubは`main.js`を直接読み込み、GemiHub Desktopは`manifest.json`で宣言されたrepository管理の`patches/gemihub-desktop.patch`を適用します（GitHub Releaseではbasenameがasset名になります）。Desktopでは帳簿をactive Workspaceへ保存し、レポート画面を2つ目のsidebar tabとして表示します。Google Sheets出力はhostが任意のSheets APIを提供する場合だけ利用できます。
 
 ## 使い方
 

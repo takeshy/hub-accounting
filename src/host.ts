@@ -1,6 +1,6 @@
 declare const __GEMIHUB_DESKTOP__: boolean;
 
-interface DesktopProjectFiles {
+interface DesktopWorkspaceFiles {
   inventory(): Promise<Array<{ path: string; binary: boolean }>>;
   read(path: string): Promise<string>;
   create(path: string, content: string | ArrayBuffer): Promise<void>;
@@ -8,7 +8,7 @@ interface DesktopProjectFiles {
 }
 
 interface DesktopPluginAPI {
-  projectFiles?: DesktopProjectFiles;
+  workspaceFiles?: DesktopWorkspaceFiles;
   selectFile?(path: string): void;
   [key: string]: unknown;
 }
@@ -22,7 +22,7 @@ function mimeType(name: string): string {
 export function adaptPluginAPI<T>(input: T): T {
   if (!__GEMIHUB_DESKTOP__) return input;
   const api = input as T & DesktopPluginAPI;
-  const files = api.projectFiles;
+  const files = api.workspaceFiles;
   if (!files) throw new Error("Accounting requires GemiHub Desktop 0.8.1 or newer.");
   const selectFile = api.selectFile?.bind(api);
   return Object.assign(api, {
@@ -39,7 +39,7 @@ export function adaptPluginAPI<T>(input: T): T {
         return { id: name, name };
       },
       async updateFile(path: string, content: string | ArrayBuffer) { await files.update(path, content); },
-      async rebuildTree() { /* local project tree updates immediately */ },
+    async rebuildTree() { /* local Workspace tree updates immediately */ },
     },
     selectFile(path: string) { selectFile?.(path); },
   });
