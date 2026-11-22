@@ -1,6 +1,6 @@
 /**
  * Journal entry templates: default templates and execution logic.
- * Each template is registered as a slash command in GemiHub.
+ * Each template is registered as a slash command in kiokuflow.
  *
  * This module has no dependency on store.ts or React so it can be tested standalone.
  */
