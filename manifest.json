@@ -7,7 +7,7 @@
   "author": "takeshy",
   "assets": [],
   "hostPatches": {
-    "gemihub-desktop": ["patches/gemihub-desktop.patch"]
+    "gemihub-desktop": ["patches/kiokuflow-desktop.patch"]
   },
   "permissions": [
     "storage",

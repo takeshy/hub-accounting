@@ -2,7 +2,7 @@
 
 ![Accounting](docs/accounting.png)
 
-A shared [kiokuflow](https://github.com/takeshy/kiokuflow) and GemiHub Desktop plugin for Beancount-compatible double-entry bookkeeping. Manage accounts, record transactions, and generate financial reports — all in plain text.
+A shared [kiokuflow](https://github.com/takeshy/kiokuflow) and kiokuflow-desktop plugin for Beancount-compatible double-entry bookkeeping. Manage accounts, record transactions, and generate financial reports — all in plain text.
 
 [Japanese / 日本語](README_ja.md)
 
@@ -21,11 +21,11 @@ A shared [kiokuflow](https://github.com/takeshy/kiokuflow) and GemiHub Desktop p
 
 ## Installation
 
-1. Go to **Settings > Plugins** in kiokuflow, or open the Plugin manager in GemiHub Desktop 0.8.1+
+1. Go to **Settings > Plugins** in kiokuflow, or open the Plugin manager in kiokuflow-desktop 0.8.1+
 2. Enter `takeshy/hub-accounting`
 3. Click **Install**
 
-The same GitHub Release is used by both hosts. kiokuflow loads `main.js` directly; GemiHub Desktop applies the repository-owned `patches/gemihub-desktop.patch` declared in `manifest.json` (GitHub publishes its basename as the release asset). Desktop stores ledgers in the active Workspace and exposes the report view as a second sidebar tab. Google Sheets export remains available only when the host provides the optional Sheets API.
+The same GitHub Release is used by both hosts. kiokuflow loads `main.js` directly; kiokuflow-desktop applies the repository-owned `patches/kiokuflow-desktop.patch` declared in `manifest.json` (GitHub publishes its basename as the release asset). Desktop stores ledgers in the active Workspace and exposes the report view as a second sidebar tab. Google Sheets export remains available only when the host provides the optional Sheets API. The `hostPatches` key in `manifest.json` stays `gemihub-desktop` because that is still kiokuflow-desktop's plugin host ID.
 
 ## Usage
 

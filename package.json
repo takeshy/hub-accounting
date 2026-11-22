@@ -1,7 +1,7 @@
 {
   "name": "hub-accounting",
   "version": "0.3.6",
-  "description": "Double-entry bookkeeping plugin for kiokuflow and GemiHub Desktop - Beancount-compatible plain-text accounting",
+  "description": "Double-entry bookkeeping plugin for kiokuflow and kiokuflow-desktop - Beancount-compatible plain-text accounting",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -11,7 +11,7 @@
   },
   "keywords": [
     "kiokuflow",
-    "gemihub",
+    "kiokuflow-desktop",
     "plugin",
     "accounting",
     "bookkeeping",

@@ -2,7 +2,7 @@
 
 ![Accounting](docs/accounting.png)
 
-Beancount互換の複式簿記を行う [kiokuflow](https://github.com/takeshy/kiokuflow)／GemiHub Desktop共通プラグインです。勘定科目の管理、取引の記録、財務レポートの生成をプレーンテキストで行えます。
+Beancount互換の複式簿記を行う [kiokuflow](https://github.com/takeshy/kiokuflow)／kiokuflow-desktop共通プラグインです。勘定科目の管理、取引の記録、財務レポートの生成をプレーンテキストで行えます。
 
 [English](README.md)
 
@@ -21,11 +21,11 @@ Beancount互換の複式簿記を行う [kiokuflow](https://github.com/takeshy/k
 
 ## インストール
 
-1. kiokuflow の **Settings > Plugins**、またはGemiHub Desktop 0.8.1以降のPlugin managerを開く
+1. kiokuflow の **Settings > Plugins**、またはkiokuflow-desktop 0.8.1以降のPlugin managerを開く
 2. `takeshy/hub-accounting` を入力
 3. **Install** をクリック
 
-両hostが同じGitHub Releaseを使用します。kiokuflowは`main.js`を直接読み込み、GemiHub Desktopは`manifest.json`で宣言されたrepository管理の`patches/gemihub-desktop.patch`を適用します（GitHub Releaseではbasenameがasset名になります）。Desktopでは帳簿をactive Workspaceへ保存し、レポート画面を2つ目のsidebar tabとして表示します。Google Sheets出力はhostが任意のSheets APIを提供する場合だけ利用できます。
+両hostが同じGitHub Releaseを使用します。kiokuflowは`main.js`を直接読み込み、kiokuflow-desktopは`manifest.json`で宣言されたrepository管理の`patches/kiokuflow-desktop.patch`を適用します（GitHub Releaseではbasenameがasset名になります）。Desktopでは帳簿をactive Workspaceへ保存し、レポート画面を2つ目のsidebar tabとして表示します。Google Sheets出力はhostが任意のSheets APIを提供する場合だけ利用できます。`manifest.json`の`hostPatches`キーは、kiokuflow-desktopのplugin host IDが現在も`gemihub-desktop`のため、そのままにしています。
 
 ## 使い方
 
