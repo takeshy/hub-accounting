@@ -1,4 +1,4 @@
-declare const __GEMIHUB_DESKTOP__: boolean;
+declare const __KIOKUFLOW_DESKTOP__: boolean;
 
 interface DesktopWorkspaceFiles {
   inventory(): Promise<Array<{ path: string; binary: boolean }>>;
@@ -20,10 +20,10 @@ function mimeType(name: string): string {
 
 /** Apply only the compatibility surface selected by the host-specific build. */
 export function adaptPluginAPI<T>(input: T): T {
-  if (!__GEMIHUB_DESKTOP__) return input;
+  if (!__KIOKUFLOW_DESKTOP__) return input;
   const api = input as T & DesktopPluginAPI;
   const files = api.workspaceFiles;
-  if (!files) throw new Error("Accounting requires GemiHub Desktop 0.8.1 or newer.");
+  if (!files) throw new Error("Accounting requires KiokuFlow Desktop 0.8.1 or newer.");
   const selectFile = api.selectFile?.bind(api);
   return Object.assign(api, {
     drive: {
@@ -45,4 +45,4 @@ export function adaptPluginAPI<T>(input: T): T {
   });
 }
 
-export const accountingMainViewLocation: "sidebar" | "main" = __GEMIHUB_DESKTOP__ ? "sidebar" : "main";
+export const accountingMainViewLocation: "sidebar" | "main" = __KIOKUFLOW_DESKTOP__ ? "sidebar" : "main";

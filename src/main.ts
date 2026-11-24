@@ -1,5 +1,5 @@
 /**
- * Accounting - Beancount-compatible Double-Entry Bookkeeping Plugin for GemiHub
+ * Accounting - Beancount-compatible Double-Entry Bookkeeping Plugin for KiokuFlow
  *
  * Manages accounts, records transactions using double-entry bookkeeping,
  * and generates financial reports (balance sheet, income statement, trial balance).

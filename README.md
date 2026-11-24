@@ -2,7 +2,7 @@
 
 ![Accounting](docs/accounting.png)
 
-A shared [GemiHub](https://github.com/takeshy/gemihub) and GemiHub Desktop plugin for Beancount-compatible double-entry bookkeeping. Manage accounts, record transactions, and generate financial reports — all in plain text.
+A shared [KiokuFlow](https://github.com/takeshy/kiokuflow) and [KiokuFlow Desktop](https://github.com/takeshy/kiokuflow-desktop) plugin for Beancount-compatible double-entry bookkeeping. Manage accounts, record transactions, and generate financial reports — all in plain text.
 
 [Japanese / 日本語](README_ja.md)
 
@@ -21,15 +21,15 @@ A shared [GemiHub](https://github.com/takeshy/gemihub) and GemiHub Desktop plugi
 
 ## Installation
 
-1. Go to **Settings > Plugins** in GemiHub, or open the Plugin manager in GemiHub Desktop 0.8.1+
+1. Go to **Settings > Plugins** in KiokuFlow, or open the Plugin manager in KiokuFlow Desktop 0.8.1+
 2. Enter `takeshy/hub-accounting`
 3. Click **Install**
 
-The same GitHub Release is used by both hosts. GemiHub loads `main.js` directly; GemiHub Desktop applies the repository-owned `patches/gemihub-desktop.patch` declared in `manifest.json` (GitHub publishes its basename as the release asset). Desktop stores ledgers in the active Workspace and exposes the report view as a second sidebar tab. Google Sheets export remains available only when the host provides the optional Sheets API.
+The same GitHub Release is used by both hosts. KiokuFlow loads `main.js` directly; KiokuFlow Desktop applies the repository-owned `patches/kiokuflow-desktop.patch` declared in `manifest.json` (GitHub publishes its basename as the release asset). Desktop stores ledgers in the active Workspace and exposes the report view as a second sidebar tab. Google Sheets export remains available only when the host provides the optional Sheets API.
 
 ## Usage
 
-1. Open the Accounting panel in the GemiHub sidebar
+1. Open the Accounting panel in the KiokuFlow sidebar
 2. Click **New Ledger** to create a ledger with default accounts, or open an existing `.beancount` file
 3. Add accounts via **Open Account** — choose a type (Assets, Liabilities, etc.) and name
 4. Record transactions via **New Transaction** — enter date, payee, narration, and at least two postings
@@ -74,7 +74,7 @@ npm test         # Run vitest
 ### Deploy
 
 ```bash
-cp main.js styles.css manifest.json ~/pkg/gemihub/data/plugins/accounting/
+cp main.js styles.css manifest.json ~/pkg/kiokuflow/data/plugins/accounting/
 ```
 
 ## License
